@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Audio } from '../systems/audio';
 import { CHASE, GAME_HEIGHT, GAME_WIDTH, SANITY_COST, TILE, TIMERS } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { hintLevel } from '../core/progress';
@@ -86,6 +87,7 @@ export class Act04Scene extends RoomScene {
       await close?.();
       // 楼上传来嘶吼，窗外的绳子绷紧，怪物正在往下爬
       this.cameras.main.shake(400, 0.006);
+      Audio.play('roar', { volume: 0.7, rate: 0.85 });
       this.startDescent();
       await this.say(this.t('roar'));
     });
@@ -160,10 +162,12 @@ export class Act04Scene extends RoomScene {
       this.tweens.killTweensOf(this.descending!);
       const fallY = GAME_HEIGHT + 80;
       this.ropeLine?.destroy();
+      Audio.play('scissors');
       this.canvasBleeds();
       await this.tween({ targets: this.descending, y: fallY, duration: 700, ease: 'Cubic.easeIn' });
       const ai = GameState.cycleDef.monsterA.ai;
       const x = this.descending!.x;
+      Audio.play(ai === 'statue' ? 'plaster_break' : ai === 'piano' ? 'piano_crash' : 'fall_crash');
       if (ai === 'statue') this.chunks(x, GAME_HEIGHT - 20, 0xd8d4cc); // 碎成石膏块，再化成灰
       if (ai === 'piano') this.cameras.main.flash(120, 90, 90, 90); // 琴弦乱响一声
       this.cameras.main.shake(ai === 'piano' ? 380 : 200, ai === 'piano' ? 0.012 : 0.006);
@@ -245,12 +249,14 @@ export class Act04Scene extends RoomScene {
       await this.say(this.t('corridor_bang'));
       for (let i = 0; i < 3; i++) {
         this.cameras.main.shake(160, 0.008);
+        Audio.play('door_bang', { rate: 1 + i * 0.05 });
         await this.wait(380 - i * 80);
       }
       // 门被撞开
       const d = this.objectCenter('B');
       this.add.rectangle(d.x, d.y, 76, 34, 0x000000).setDepth(5);
       this.cameras.main.flash(120, 50, 0, 0);
+      Audio.play('door_burst');
       this.spawnSwarm(d.x, d.y - 30);
       await this.wait(350);
     });
@@ -339,6 +345,7 @@ export class Act04Scene extends RoomScene {
   private scoreCut(a: Actor): void {
     GameState.deductSanity(SANITY_COST.scoreCut, 'score-cut');
     this.cameras.main.flash(90, 120, 0, 0);
+    Audio.play('paper', { rate: 1.6 });
     a.x -= 170;
     a.obj.setPosition(a.x, a.y);
     const now = this.elapsed;

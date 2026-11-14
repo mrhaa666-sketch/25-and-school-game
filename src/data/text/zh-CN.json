@@ -60,7 +60,9 @@
     "endingLabel": "结局",
     "pressToContinue": "按 空格 继续",
     "obtained": "拿到了「{name}」。",
-    "controlsHint": "WASD/方向键 移动　Shift 奔跑　空格 调查　Tab 手机　I 背包　Esc 暂停"
+    "controlsHint": "WASD/方向键 移动　Shift 奔跑　空格 调查　Tab 手机　I 背包　Esc 暂停",
+    "soundOn": "声音：开",
+    "soundOff": "声音：关"
   },
   "contacts": [
     {
@@ -567,6 +569,7 @@
         "四个人往外走。",
         "走出一段路，真冬回头看了一眼。",
         "#bg bg:ending10_lot",
+        "#amb amb_dawn",
         "校门后面什么都没有。",
         "是一片空地，长着杂草。",
         "#bg",

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Audio } from '../systems/audio';
 import { GAME_HEIGHT, GAME_WIDTH, SANITY_COST } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { getMaterial, hintLevel } from '../core/progress';
@@ -22,6 +23,7 @@ const BLANK_PAPER = 'mafuyu_blank_paper';
 export class Act05Scene extends RoomScene {
   private exam?: ExamUI;
   private submitted = false;
+  private countdownHint = false;
   private papers: Phaser.GameObjects.Rectangle[] = [];
 
   constructor() {
@@ -35,6 +37,7 @@ export class Act05Scene extends RoomScene {
   create(): void {
     super.create();
     this.submitted = false;
+    this.events.once('shutdown', () => Audio.loop('clock', null, 200));
     this.papers = [];
     this.loadRoom('exam_room');
     this.facing = 'up';
@@ -42,7 +45,7 @@ export class Act05Scene extends RoomScene {
     this.decorate();
     const def = GameState.cycleDef.exam;
     // 补充周目的提示：「白卷」还没拿到时，挂钟的 10 秒倒计时清楚可见
-    const countdown = GameState.save.cycle === 1 && hintLevel(GameState.save) >= 1 && !GameState.hasMaterial(BLANK_PAPER);
+    const countdown = (this.countdownHint = GameState.save.cycle === 1 && hintLevel(GameState.save) >= 1 && !GameState.hasMaterial(BLANK_PAPER));
     this.exam = new ExamUI(
       this,
       {
@@ -61,6 +64,7 @@ export class Act05Scene extends RoomScene {
       if (e.code === 'ArrowDown' || e.code === 'KeyS') this.exam.handle('down');
     });
     this.cameras.main.fadeIn(600, 0, 0, 0);
+    Audio.play('door_lock');
     void this.cutscene(() => this.say(this.t('enter')));
   }
 
@@ -128,7 +132,10 @@ export class Act05Scene extends RoomScene {
     this.pos.set(c.x, c.y + 26);
     this.facing = 'up';
     this.syncPlayer();
+    // 挂钟的秒针（补充周目的提示：秒针声音变大）
+    Audio.loop('clock', 'clock_tick', 400, this.countdownHint ? 2 : 1);
     const result = await this.exam!.open();
+    Audio.loop('clock', null, 300);
 
     if (result.kind === 'answer') {
       GameState.deductSanity(SANITY_COST.examAnswer, 'exam');
@@ -151,6 +158,7 @@ export class Act05Scene extends RoomScene {
     this.submitted = true;
     await this.say([...this.t('submitted'), ...this.t(`submitted_${kind}`)]);
     this.cameras.main.shake(120, 0.003);
+    Audio.play('door_open');
     await this.say(this.t('door_open'));
     this.locked = false;
   }
@@ -168,6 +176,7 @@ export class Act05Scene extends RoomScene {
     if (this.textures.exists(filled)) {
       for (const img of Phaser.Utils.Array.Shuffle([...(this.objectImages.get('d') ?? [])])) {
         img.setTexture(filled);
+        Audio.play('scribble', { rate: Phaser.Math.FloatBetween(0.9, 1.2) });
         this.cameras.main.shake(40, 0.001);
         await this.wait(260);
       }

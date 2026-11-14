@@ -6,6 +6,7 @@ import type Phaser from 'phaser';
 import { ENDINGS, GameState } from '../core/GameState';
 import * as P from '../core/progress';
 import { cycleCountLabel, tLines, tRaw, tUi } from '../core/text';
+import { Audio } from '../systems/audio';
 import type { StoryData } from './StoryScene';
 
 export const SCENE = {
@@ -53,12 +54,14 @@ export function continueGame(scene: Phaser.Scene): void {
 }
 
 export function goToTitle(scene: Phaser.Scene): void {
+  Audio.stopAll();
   stopGameplay(scene);
   for (const key of [SCENE.story, SCENE.ui]) if (scene.scene.isActive(key)) scene.scene.stop(key);
   scene.scene.start(SCENE.title);
 }
 
 function showStory(scene: Phaser.Scene, data: StoryData): void {
+  if (data.header?.startsWith(tUi('endingLabel'))) data = { ...data, sfx: data.sfx ?? 'ending_hit' };
   stopGameplay(scene);
   if (scene.scene.isActive(SCENE.ui)) scene.scene.stop(SCENE.ui);
   if (scene.scene.key === SCENE.story) scene.scene.restart(data);
@@ -170,6 +173,7 @@ export function playTransition(scene: Phaser.Scene, kind: TransitionKind): void 
     // 只有常规周目（二~四）和进入终周目时才会多一个乱码；补充周目之间不再增加
     const garbleGrew = s.cycleCount <= 4;
     if (garbleGrew) lines.push(...tLines('transition.phone', s.cycle));
+    lines.push(kind === 'final' ? '#sfx voice_last' : '#sfx voice_continue');
     lines.push(`「${tRaw<string>(kind === 'final' ? 'voice.last' : 'voice.continue')}」`);
   }
   const header = s.cycle === 'final' ? tUi('finalCycle') : cycleCountLabel(s.cycleCount);

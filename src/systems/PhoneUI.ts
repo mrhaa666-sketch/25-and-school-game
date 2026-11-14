@@ -3,6 +3,7 @@ import { SANITY_COST, GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { isContactGarbled } from '../core/progress';
 import { tRaw, tUi } from '../core/text';
+import { Audio } from './audio';
 import type { Modal, UiAction } from './Modal';
 import { COLORS, garble, panel, textStyle } from './style';
 
@@ -107,6 +108,7 @@ export class PhoneUI implements Modal {
     this.renderBusy('……');
     this.busyTimer = this.scene.time.delayedCall(900, () => {
       this.status.setColor('#a04040').setText(tUi('phoneSendFailed'));
+      Audio.play('phone_fail');
       this.busyTimer = this.scene.time.delayedCall(1300, () => this.endBusy());
     });
   }
@@ -117,6 +119,7 @@ export class PhoneUI implements Modal {
     GameState.patch({ phoneCallsThisCycle: s.phoneCallsThisCycle + 1 });
     this.mode = 'busy';
     this.renderBusy(tUi('phoneCalling'));
+    Audio.play('phone_dial');
     // 电话没有声音。屏幕上只有计时，几秒后自己断掉。
     let sec = 0;
     this.busyTimer = this.scene.time.addEvent({

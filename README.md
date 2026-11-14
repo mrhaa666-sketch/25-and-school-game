@@ -37,6 +37,13 @@ assets/sprites/official/
   kanade/  ena/  mizuki/                          ← 25 时小人包直接解压到 official/ 下
 ```
 
+## 音效
+
+- 放在 `assets/audio/<名字>.ogg`，名字和要找的声音见 **`docs/sound-list.md`**。缺哪个，那里就是安静的。
+- 加了文件后重启 `npm run dev`（启动时扫描有哪些音频文件）。
+- 用了外部素材，在 `CREDITS.md` 记一行来源和授权。
+- 暂停菜单（Esc）里可以关掉声音。
+
 ## 目录
 
 ```

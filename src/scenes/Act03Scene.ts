@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Audio } from '../systems/audio';
 import { GameState } from '../core/GameState';
 import { runClimb } from '../systems/ClimbGame';
 import { ROPE_VARIANT } from '../systems/figures';
@@ -61,6 +62,7 @@ export class Act03Scene extends RoomScene {
       this.bangTimer = Phaser.Math.Between(2200, 4200);
       const d = this.objectCenter('D');
       this.cameras.main.shake(180, 0.004);
+      Audio.play('door_bang', { rate: Phaser.Math.FloatBetween(0.9, 1.05) });
       const t = this.add.text(d.x + 30, d.y - 20, this.textOne('act03.bang'), textStyle(18, '#7a6a6a')).setDepth(130);
       this.tweens.add({ targets: t, alpha: 0, y: t.y - 16, duration: 900, onComplete: () => t.destroy() });
     }
@@ -103,6 +105,7 @@ export class Act03Scene extends RoomScene {
         // 绳结没绑好：往下爬时摔下去
         await this.say(this.t('climb_start'));
         this.cameras.main.shake(400, 0.015);
+        Audio.play('fall_crash');
         this.cameras.main.fadeOut(400, 0, 0, 0);
         await this.wait(500);
         triggerEnding(this, 2);

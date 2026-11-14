@@ -1,3 +1,4 @@
+import { Audio } from '../systems/audio';
 import { actKey, openGate } from './flow';
 import { RoomScene } from './RoomScene';
 import type { RoomObject } from './rooms';
@@ -29,6 +30,7 @@ export class Act10Scene extends RoomScene {
       case 'gate':
         void this.cutscene(async () => {
           await this.say(this.text('act10.gate'));
+          Audio.play('gate_open');
           openGate(this);
         });
         return;

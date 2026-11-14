@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { EV, GameState } from '../core/GameState';
 import { GAME_WIDTH } from '../core/constants';
 import { getMaterial } from '../core/progress';
+import { Audio } from '../systems/audio';
 import { cycleCountLabel, tUi } from '../core/text';
 import { tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
@@ -75,6 +76,7 @@ export class UIScene extends Phaser.Scene {
     this.bag = new InventoryUI(this);
     this.pause = new ListMenu(this, tUi('pauseTitle'), [
       { label: tUi('resume'), action: () => this.closeModal() },
+      { label: () => (Audio.muted ? tUi('soundOff') : tUi('soundOn')), action: () => Audio.toggleMute() },
       {
         label: tUi('toTitle'),
         action: () => {
@@ -86,7 +88,10 @@ export class UIScene extends Phaser.Scene {
     ], 360, () => this.closeModal());
     if (debugEnabled()) this.debug = buildDebugMenu(this, () => this.closeModal());
 
-    const onSanity = () => this.screenText.reschedule(this.time.now);
+    const onSanity = (c: { delta: number; reason?: string }) => {
+      this.screenText.reschedule(this.time.now);
+      if (c.delta < 0 && c.reason !== 'act') Audio.play('sanity_drop');
+    };
     GameState.events.on(EV.sanity, onSanity);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => GameState.events.off(EV.sanity, onSanity));
 
@@ -97,6 +102,10 @@ export class UIScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     this.hud.update(delta);
+    // 精神值档位 4：心跳、音频失真
+    const tier4 = !GameState.isFinal && GameState.save.sanity <= 25 && this.target !== null;
+    Audio.loop('heart', tier4 ? 'heartbeat' : null, 1500);
+    Audio.setDistorted(tier4);
     const s = GameState.save;
     this.cycleLabel.setVisible(s.cycle !== 'final').setText(cycleCountLabel(s.cycleCount));
     this.filter.update(time);

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Audio, type SoundKey } from '../systems/audio';
 import { SANITY_COST } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { makeNoteMonster, PALETTE } from '../systems/figures';
@@ -38,6 +39,10 @@ export class Act08Scene extends RoomScene {
     this.events.once('shutdown', () => this.stopNoise?.());
     this.cameras.main.fadeIn(600, 0, 0, 0);
     void this.cutscene(() => this.say(this.text('act08.enter')));
+  }
+
+  protected ambience(): SoundKey | null {
+    return 'amb_harsh';
   }
 
   protected onEnterRoom(): void {
@@ -98,10 +103,12 @@ export class Act08Scene extends RoomScene {
         const img = this.member.list[0];
         if (img instanceof Phaser.GameObjects.Image && this.textures.exists(tex('scn', 'music_kanade_shatter'))) {
           img.setTexture(tex('scn', 'music_kanade_shatter'));
+          Audio.play('glass_crack', { volume: 0.6 });
           this.cameras.main.shake(200, 0.006);
           await this.wait(900);
         }
         this.cameras.main.flash(150, 255, 255, 255);
+        Audio.play('glass_crack');
         this.member.destroy();
         for (let i = 0; i < 14; i++) {
           const piece = this.add.rectangle(k.x, k.y - 10, Phaser.Math.Between(4, 10), Phaser.Math.Between(4, 12), [PALETTE.kanade.body, PALETTE.kanade.hair, PALETTE.kanade.head][i % 3]).setDepth(120);

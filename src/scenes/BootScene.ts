@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Audio, preloadAudio } from '../systems/audio';
 import { preloadSprites } from '../systems/sprites';
 import { SCENE } from './flow';
 
@@ -10,9 +11,11 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     preloadSprites(this);
+    preloadAudio(this);
   }
 
   create(): void {
+    Audio.init(this.game);
     this.scene.start(SCENE.title);
   }
 }

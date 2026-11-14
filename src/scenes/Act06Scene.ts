@@ -1,3 +1,4 @@
+import { Audio } from '../systems/audio';
 import { SANITY, SANITY_COST } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { makeFigure, PALETTE } from '../systems/figures';
@@ -45,8 +46,10 @@ export class Act06Scene extends RoomScene {
     this.cameras.main.fadeIn(600, 0, 0, 0);
     void this.cutscene(async () => {
       await this.say(this.t('enter'));
+      Audio.play('door_lock');
       for (let i = 0; i < 3; i++) {
         this.cameras.main.shake(180, 0.008);
+        Audio.play('door_bang', { rate: 0.9 });
         await this.wait(450);
       }
       await this.say(this.t('bang'));
@@ -152,6 +155,7 @@ export class Act06Scene extends RoomScene {
   private async enterPinkRoom(): Promise<void> {
     await this.cutscene(async () => {
       await this.say(this.t('pink_door'));
+      Audio.play('door_open', { rate: 0.85 });
       this.loadRoom(
         this.mirrorPipe()
           ? { ...ROOMS.pink_room2, map: ROOMS.pink_room2.map.map((r) => r.replace(/R/g, '.')) } // 房间中央没有人

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Audio } from '../systems/audio';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { MATERIALS } from '../core/progress';
@@ -147,6 +148,7 @@ export class FinalRunScene extends RoomScene {
     await this.cutscene(async () => {
       this.menusOpen = false;
       await this.say(this.t('gate'));
+      Audio.play('gate_open');
       const cam = this.cameras.main;
       cam.fadeOut(1600, 0, 0, 0);
       await this.wait(1800);
@@ -159,6 +161,7 @@ export class FinalRunScene extends RoomScene {
         this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x0a0c12).setOrigin(0).setScrollFactor(0).setDepth(860);
       }
       this.player.setVisible(false);
+      Audio.loop('amb', 'amb_night', 2400);
       cam.fadeIn(2400, 0, 0, 0);
       await this.wait(2600);
       await this.say(this.t('outside'));

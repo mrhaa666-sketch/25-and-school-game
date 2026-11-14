@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Audio } from '../systems/audio';
 import { CHASE, SANITY_COST } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { makeMonsterById } from '../systems/figures';
@@ -52,7 +53,10 @@ export class Act02Scene extends RoomScene {
   }
 
   protected onEnterRoom(roomId: string, firstTime: boolean): void {
-    if (roomId === 'corridor4' && firstTime) this.time.delayedCall(300, () => this.ui.say(this.t('door_out')));
+    if (roomId === 'corridor4' && firstTime) {
+      this.time.delayedCall(300, () => this.ui.say(this.t('door_out')));
+      this.time.delayedCall(2200, () => Audio.play('cart', { volume: 0.7 })); // 远处有推车滚过
+    }
     if (roomId === 'infirmary' && this.cabinetHint()) {
       // 补充周目（瑞希主题）的提示：药柜的柜门微微开着
       this.objectImages.get('K')?.forEach((i) => i.setTexture(tex('obj', 'medicine_cabinet_open')));
@@ -153,6 +157,7 @@ export class Act02Scene extends RoomScene {
       await this.say(lines[0]);
       const shadow = this.add.rectangle(this.player.x, this.player.y + 30, 26, 52, 0x000000, 0.85).setDepth(99);
       this.cameras.main.flash(120, 40, 0, 0);
+      Audio.play('sting');
       GameState.deductSanity(SANITY_COST.mirror, 'mirror');
       await this.wait(260);
       shadow.destroy();
@@ -211,6 +216,7 @@ export class Act02Scene extends RoomScene {
       if (looking && !this.seen && this.cooldownMs <= 0) {
         this.dashMs = 340; // 被看见：冲过来
         this.cameras.main.shake(120, 0.004);
+        Audio.play('door_bang', { volume: 0.6, rate: 1.3 });
       }
       this.seen = looking;
       if (this.dashMs > 0) {
@@ -255,6 +261,7 @@ export class Act02Scene extends RoomScene {
     this.tweens.add({ targets: this.monster.obj, alpha: 1, duration: 200 });
     this.cameras.main.shake(250, 0.008);
     this.cameras.main.flash(100, 60, 0, 0);
+    Audio.play('roar');
     // 停顿一下再冲过来，给玩家反应时间
     this.locked = false;
     this.monster.speed = 0;

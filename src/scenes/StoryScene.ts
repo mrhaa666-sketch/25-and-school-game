@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { parseLine, tUi } from '../core/text';
+import { Audio, SOUNDS, type SoundKey } from '../systems/audio';
 import { poseImage } from '../systems/sprites';
 import { COLORS, textStyle } from '../systems/style';
 
@@ -14,6 +15,10 @@ export interface StoryData {
   image?: string;
   /** 全屏背景图（素材 key），压暗显示 */
   bg?: string;
+  /** 开场的音效 */
+  sfx?: SoundKey;
+  /** 环境音（不写就停掉） */
+  amb?: SoundKey;
   onDone: (scene: Phaser.Scene) => void;
 }
 
@@ -69,6 +74,9 @@ export class StoryScene extends Phaser.Scene {
     kb.on('keydown-ENTER', () => this.next());
 
     this.cameras.main.fadeIn(600, 0, 0, 0);
+    Audio.loop('amb', this.data_.amb ?? null, 1500);
+    Audio.loop('heart', null);
+    if (this.data_.sfx) Audio.play(this.data_.sfx);
     if (this.data_.flash) {
       const f = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, this.data_.flash, textStyle(56, '#ffffff')).setOrigin(0.5).setAlpha(0);
       this.tweens.chain({
@@ -110,8 +118,12 @@ export class StoryScene extends Phaser.Scene {
     if (!this.ready || this.finished) return;
     this.index++;
     // 指令行：切换背景，然后直接显示下一句
-    while (this.index < this.data_.lines.length && this.data_.lines[this.index].startsWith('#bg')) {
-      this.setBg(this.data_.lines[this.index].slice(3).trim());
+    // 指令行：#bg 换背景、#sfx 播放音效、#amb 换环境音
+    while (this.index < this.data_.lines.length && this.data_.lines[this.index].startsWith('#')) {
+      const [cmd, arg = ''] = this.data_.lines[this.index].split(/\s+/, 2);
+      if (cmd === '#bg') this.setBg(arg);
+      if (cmd === '#sfx' && arg in SOUNDS) Audio.play(arg as SoundKey);
+      if (cmd === '#amb') Audio.loop('amb', arg in SOUNDS ? (arg as SoundKey) : null, 2000);
       this.index++;
     }
     if (this.index >= this.data_.lines.length) {

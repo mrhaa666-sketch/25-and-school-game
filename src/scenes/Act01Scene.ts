@@ -1,5 +1,6 @@
 import { GameState } from '../core/GameState';
 import Phaser from 'phaser';
+import { Audio, type SoundKey } from '../systems/audio';
 import { makeFigure, PALETTE } from '../systems/figures';
 import { PLAYER_HEIGHT } from '../systems/playerSprite';
 import { officialFrames, poseImage } from '../systems/sprites';
@@ -23,6 +24,10 @@ export class Act01Scene extends RoomScene {
 
   allowMenus(): boolean {
     return false;
+  }
+
+  protected ambience(): SoundKey | null {
+    return 'amb_night';
   }
 
   create(): void {
@@ -69,6 +74,7 @@ export class Act01Scene extends RoomScene {
     if (girlImg && this.textures.exists('mafuyu_child_turned')) {
       await this.tween({ targets: girlImg, scaleX: girlImg.scaleX * 0.15, duration: 380, ease: 'Sine.easeIn' });
       girlImg.setTexture('mafuyu_child_turned');
+      Audio.play('sting');
       this.cameras.main.shake(160, 0.004);
       await this.tween({ targets: girlImg, scaleX: girlImg.scaleY, duration: 380, ease: 'Sine.easeOut' });
     } else {

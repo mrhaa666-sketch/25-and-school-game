@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Audio, type SoundKey } from '../systems/audio';
 import { GAME_HEIGHT, GAME_WIDTH, MOVE, SANITY_COST } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { makeFigure, PALETTE } from '../systems/figures';
@@ -42,6 +43,10 @@ export class Act07Scene extends RoomScene {
     this.makeDarkness();
     this.cameras.main.fadeIn(800, 0, 0, 0);
     void this.cutscene(() => this.say(this.text('act07.enter')));
+  }
+
+  protected ambience(): SoundKey | null {
+    return 'amb_pipe';
   }
 
   protected moveSpeed(): number {
@@ -101,6 +106,8 @@ export class Act07Scene extends RoomScene {
         // 文字出现在声音来的方向，越近越清楚
         const ang = Phaser.Math.Angle.Between(this.pos.x, this.pos.y, src.x, src.y);
         const r = Math.min(d, 150);
+        // 数数声：越靠近下面那条岔路越清楚
+        Audio.play('voice_counting', { volume: Phaser.Math.Clamp(1.1 - d / 800, 0.15, 1) });
         this.voiceText(this.pos.x + Math.cos(ang) * r, this.pos.y - 20 + Math.sin(ang) * r, Phaser.Math.Clamp(1.2 - d / 700, 0.3, 1));
       }
       // 停下来听超过 3 秒：-5（每次停下只扣一次）

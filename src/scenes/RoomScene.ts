@@ -5,6 +5,7 @@ import { hintLevel, hintRooms, MATERIALS, sanityTier } from '../core/progress';
 import { tHas, tLines, tStory, tUi } from '../core/text';
 import type { MaterialDef } from '../core/types';
 import { makeFigure, PALETTE } from '../systems/figures';
+import { Audio, type SoundKey } from '../systems/audio';
 import { MafuyuSprite, PLAYER_HEIGHT } from '../systems/playerSprite';
 import { cropImage, fitImage, MAFUYU_STAND_REF, PORTRAIT_CROP, poseImage, tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
@@ -83,6 +84,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private beatAcc = 0;
   private beatShade?: Phaser.GameObjects.Rectangle;
   private lingerFloor1 = 0;
+  private stepAcc = 0;
 
   protected abstract onObject(obj: RoomObject, tile: { x: number; y: number }): void;
   protected onEnterRoom(_roomId: string, _firstTime: boolean): void {}
@@ -130,6 +132,13 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     // 四周目节拍器：随节拍整体压暗一下
     this.beatShade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1).setOrigin(0).setScrollFactor(0).setDepth(450).setAlpha(0);
     this.cameras.main.setBackgroundColor('#000000');
+    Audio.loop('amb', this.ambience(), 1600);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => Audio.loop('whisper', null, 300));
+  }
+
+  /** 这一幕的环境音。子类可以改 */
+  protected ambience(): SoundKey | null {
+    return GameState.isFinal ? 'amb_quiet' : 'amb_hum';
   }
 
   onInteract(): void {
@@ -208,6 +217,16 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       }
     }
     if (this.voiceTimer <= 0) this.voiceTimer = Phaser.Math.Between(900, 1700);
+    // 还没「停下」的门附近，听得到说话声
+    let near = false;
+    for (const [ch, imgs] of this.objectImages) {
+      if (this.room.objects[ch]?.id !== 'class_door') continue;
+      for (const img of imgs) {
+        if (this.cycleTouched.has(`${this.room.id}:${Math.round(img.x)}`)) continue;
+        if (Phaser.Math.Distance.Between(img.x, img.y, this.pos.x, this.pos.y) < 260) near = true;
+      }
+    }
+    Audio.loop('whisper', near ? 'whisper' : null, near ? 800 : 150);
   }
 
   /** 四周目：全程节拍器，越往下层越快；走廊灯随节拍明灭。在一楼停留每 5 秒 -2 */
@@ -218,6 +237,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     if (this.beatAcc >= beatMs) {
       this.beatAcc -= beatMs;
       this.beatShade?.setAlpha(0.22);
+      Audio.play('metronome', { rate: 0.9 + bpm / 600 });
       this.tweens.add({ targets: this.beatShade, alpha: 0, duration: beatMs * 0.6 });
       const tick = this.add.text(GAME_WIDTH - 40, 60, '◆', textStyle(12, '#4a4a52')).setScrollFactor(0).setDepth(460);
       this.tweens.add({ targets: tick, alpha: 0, duration: beatMs * 0.8, onComplete: () => tick.destroy() });
@@ -305,6 +325,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const lines = intro ? (Array.isArray(intro) ? [...intro] : [intro]) : [];
     lines.push(tUi('obtained').replace('{name}', m.name));
     lines.push(...this.materialComment(m.id));
+    Audio.play('paper');
     this.refreshHints();
     await this.say(lines);
   }
@@ -594,6 +615,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
 
   protected changeRoom(roomId: string, arriveAt?: string): void {
     this.transitioning = true;
+    Audio.play('door_open');
     this.cameras.main.fadeOut(250, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.loadRoom(roomId, arriveAt);
@@ -750,6 +772,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.stamina = Phaser.Math.Clamp(this.stamina + (running ? -MOVE.staminaDrain : MOVE.staminaRegen) * dt, 0, MOVE.staminaMax);
     this.drawStamina();
     this.mafuyu?.update(this.facing, this.moving || this.autoWalking, delta);
+    this.footsteps(delta, running);
     this.updateGhost(delta);
     this.updateCycleAmbience(time, delta);
     this.onUpdate(time, delta);
@@ -772,6 +795,20 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const d = Phaser.Math.Clamp(c.x - this.pos.x, -step, step);
       if (d && !this.blockedBox(this.pos.x + d, this.pos.y, BODY_W, BODY_H)) this.pos.x += d;
     }
+  }
+
+  /** 脚步声：走、跑、爬的间隔不同，每一步音高略有变化 */
+  private footsteps(delta: number, running: boolean): void {
+    if (!(this.moving || this.autoWalking)) {
+      this.stepAcc = 0;
+      return;
+    }
+    const crawl = this.moveSpeed(false) < 80;
+    const interval = crawl ? 620 : running ? 300 : 430;
+    this.stepAcc += delta;
+    if (this.stepAcc < interval) return;
+    this.stepAcc -= interval;
+    Audio.play(crawl ? 'crawl' : running ? 'step_run' : 'step_walk', { rate: Phaser.Math.FloatBetween(0.9, 1.1) });
   }
 
   protected moveSpeed(running: boolean): number {

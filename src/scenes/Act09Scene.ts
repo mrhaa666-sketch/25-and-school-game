@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Audio, type SoundKey } from '../systems/audio';
 import { GAME_HEIGHT, GAME_WIDTH, TIMERS } from '../core/constants';
 import { makeNoteMonster } from '../systems/figures';
 import { panel, textStyle } from '../systems/style';
@@ -24,6 +25,10 @@ export class Act09Scene extends RoomScene {
   }
 
   protected onObject(): void {}
+
+  protected ambience(): SoundKey | null {
+    return 'amb_choir';
+  }
 
   create(): void {
     super.create();
@@ -132,6 +137,7 @@ export class Act09Scene extends RoomScene {
 
   /** 「不同意」被吃掉：字形抖动、错位、颜色反转，定格为「同意」 */
   private async eatRefuse(): Promise<void> {
+    Audio.play('sting', { rate: 0.8 });
     this.eaten = true;
     const b = this.buttons[1];
     const agree = this.textOne('act09.agree');

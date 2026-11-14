@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { CHASE, GAME_HEIGHT, GAME_WIDTH, SANITY_COST, TIMERS } from '../core/constants';
 import { GameState } from '../core/GameState';
+import { Audio } from './audio';
 import { makeFigure, makeMonsterById, PALETTE } from './figures';
 import { hasAll, MAFUYU_STAND_REF, poseImage, tex } from './sprites';
 import { textStyle } from './style';
@@ -80,6 +81,7 @@ export function runClimb(scene: Phaser.Scene, o: ClimbOptions): Promise<boolean>
           resolve(true);
         });
       } else {
+        Audio.play('rope_creak', { rate: 0.8 });
         // 绳子被整个拉上去
         scene.tweens.add({ targets: climber, y: -80, duration: 2200, ease: 'Cubic.easeIn' });
         scene.time.delayedCall(2400, () => {
@@ -109,6 +111,7 @@ export function runClimb(scene: Phaser.Scene, o: ClimbOptions): Promise<boolean>
           progress = Math.max(0, progress - CHASE.climbPullBack);
           GameState.deductSanity(SANITY_COST.ropePulled, 'rope');
           scene.cameras.main.shake(160, 0.006);
+          Audio.play('rope_creak', { rate: Phaser.Math.FloatBetween(0.9, 1.1) });
           scene.tweens.add({ targets: monster, y: topY - 12, duration: 90, yoyo: true });
         }
       }
