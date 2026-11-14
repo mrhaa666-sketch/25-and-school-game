@@ -56,7 +56,7 @@ export class Act08Scene extends RoomScene {
       const k = this.objectCenter('k');
       this.member = drawMemberScene(this, id, k.x, k.y + 14);
     }
-    this.roomLayer.add(this.member);
+    this.addRoomSorted(this.member);
   }
 
   protected onObject(obj: RoomObject): void {

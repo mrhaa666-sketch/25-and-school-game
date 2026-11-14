@@ -69,7 +69,7 @@ export class Act04Scene extends RoomScene {
   protected onEnterRoom(roomId: string): void {
     if (roomId === 'classroom3') {
       const p = this.memberPos();
-      this.roomLayer.add(drawMemberScene(this, GameState.cycleDef.scenes.floor3, p.x, p.y + 14));
+      this.addRoomSorted(drawMemberScene(this, GameState.cycleDef.scenes.floor3, p.x, p.y + 14));
     }
   }
 

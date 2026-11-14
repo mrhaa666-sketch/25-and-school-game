@@ -29,6 +29,7 @@ const BODY_H = 20;
 const FACADE_ROWS = 3;
 /** 嵌在后墙上的门洞 / 门的高度：约 2.4 格 */
 const DOOR_H = Math.round(TILE * 2.4);
+const DOOR_W = Math.round(TILE * 1.5);
 
 /** 会移动的东西（怪物、群体中的个体）。坐标是脚下中心 */
 export interface Actor {
@@ -76,6 +77,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private lightTimers: Phaser.Time.TimerEvent[] = [];
   /** 不在 roomLayer 里、换房间时要销毁的东西（贴图和遮罩） */
   private roomExtras: Phaser.GameObjects.GameObject[] = [];
+  /** 按脚底 y 排序的东西（物件、玩家、怪物、成员演出图）。y 就是脚底 */
+  private sorted = new Set<Phaser.GameObjects.GameObject & { y: number; setDepth(d: number): unknown }>();
   /** 物件字母 → 画出来的图（演出里可以换图、隐藏） */
   protected objectImages = new Map<string, Phaser.GameObjects.Image[]>();
   /** 补充周目第 3 次提示：已经「看过一眼」的楼层 */
@@ -132,6 +135,10 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const eye = this.add.triangle(0, 0, 0, 0, 8, 0, 4, 6, 0xffffff).setName('facing');
       this.player.add(eye);
     }
+    this.sorted = new Set();
+    this.addShadow(this.player);
+    this.ySort(this.player);
+    if (this.mafuyu) this.applyPlayerLook(this.mafuyu.image);
     this.staminaBar = this.add.graphics().setDepth(500).setScrollFactor(0);
     // 四周目节拍器：随节拍整体压暗一下
     this.beatShade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1).setOrigin(0).setScrollFactor(0).setDepth(450).setAlpha(0);
@@ -321,7 +328,46 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   protected setPlayerPose(key: string, fallback: () => Phaser.GameObjects.GameObject): void {
     this.player.removeAll(true);
     this.mafuyu = undefined;
-    this.player.add(poseImage(this, key, PLAYER_HEIGHT, MAFUYU_STAND_REF) ?? fallback());
+    const body = poseImage(this, key, PLAYER_HEIGHT, MAFUYU_STAND_REF);
+    this.addShadow(this.player, key === 'mafuyu_crawl' || key === 'mafuyu_fallen' ? 52 : 30);
+    this.player.add(body ?? fallback());
+    if (body) this.applyPlayerLook(body);
+  }
+
+  // ------------------------------------------------------------ 遮挡和影子
+
+  /** 加进遮挡排序：深度 = 100 + 脚底 y / 10000，每帧更新 */
+  protected ySort<T extends Phaser.GameObjects.GameObject & { y: number; setDepth(d: number): unknown }>(o: T): T {
+    this.sorted.add(o);
+    o.setDepth(100 + o.y / 10000);
+    return o;
+  }
+
+  /** 这个房间里、立在地上的东西：参与遮挡排序，换房间时一起清掉 */
+  protected addRoomSorted<T extends Phaser.GameObjects.GameObject & { y: number; setDepth(d: number): unknown }>(o: T): T {
+    this.roomExtras.push(o);
+    return this.ySort(o);
+  }
+
+  private updateSort(): void {
+    for (const o of this.sorted) {
+      if (!o.active) this.sorted.delete(o);
+      else o.setDepth(100 + o.y / 10000);
+    }
+  }
+
+  /** 角色脚下的半透明椭圆阴影（放在容器最底层） */
+  protected addShadow(c: Phaser.GameObjects.Container, w = 30): void {
+    c.addAt(this.add.ellipse(0, -1, w, Math.round(w * 0.3), 0x000000, 0.35), 0);
+  }
+
+  /** 玩家贴图：乘上减弱的周目环境光，略微降饱和，让她不浮在场景上面。终周目不处理 */
+  private applyPlayerLook(img: Phaser.GameObjects.Image): void {
+    if (GameState.isFinal) return;
+    const c = Phaser.Display.Color.HexStringToColor(GameState.cycleDef.environment.lightTint);
+    const mix = (v: number) => Math.round(255 - (255 - v) * 0.5);
+    img.setTint(Phaser.Display.Color.GetColor(mix(c.red), mix(c.green), mix(c.blue)));
+    img.preFX?.addColorMatrix().saturate(-0.15);
   }
 
   /** 调查后拿到材料的通用文字 */
@@ -393,6 +439,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       }
     };
     this.events.on(Phaser.Scenes.Events.PRE_RENDER, assign);
+    const sort = () => this.updateSort();
+    this.events.on(Phaser.Scenes.Events.PRE_RENDER, sort);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.PRE_RENDER, sort));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.PRE_RENDER, assign));
   }
 
@@ -489,7 +538,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         if (/[0-9]/.test(ch)) {
           if (backWall) {
             // 后墙上的出口：先画一个门洞（R5 换成门的图）
-            g.fillStyle(0x000000, 0.8).fillRect(px + 4, py + TILE - DOOR_H, TILE - 8, DOOR_H);
+            // 画得比出口格宽（约 1.5 格），出口的判定仍然是这一格
+            g.fillStyle(0x000000, 0.8).fillRect(px + TILE / 2 - DOOR_W / 2, py + TILE - DOOR_H, DOOR_W, DOOR_H);
+            g.lineStyle(2, 0x2a2622, 1).strokeRect(px + TILE / 2 - DOOR_W / 2, py + TILE - DOOR_H, DOOR_W, DOOR_H);
           } else g.fillStyle(0x000000, 0.55).fillRect(px + 4, py + 4, TILE - 8, TILE - 8);
           return;
         }
@@ -568,7 +619,14 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         : null;
       if (img) {
         img.setTint(0xc8c8c8);
-        this.roomLayer.add(img);
+        if (obj.wall) this.roomLayer.add(img);
+        else {
+          // 立在地上的物件：和角色一起按脚底的 y 排序，脚下一块椭圆阴影
+          this.roomExtras.push(img);
+          this.ySort(img);
+          const sh = this.add.ellipse(x + cw / 2, y + chh, cw * 0.85, Math.min(14, chh * 0.4), 0x000000, 0.3);
+          this.roomLayer.add(sh);
+        }
         const list = this.objectImages.get(comp.ch) ?? [];
         list.push(img);
         this.objectImages.set(comp.ch, list);
@@ -716,7 +774,11 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
    */
   private onFacadeBox(obj: RoomObject, x: number, floorY: number, w: number) {
     const standing = /door|gate|stairs|pipe|vent/.test(`${obj.id} ${obj.tex ?? ''}`);
-    if (standing) return { x, y: floorY - DOOR_H, w, h: DOOR_H };
+    if (standing) {
+      // 门至少 1.5 格宽，居中于物件
+      const dw = Math.max(w, DOOR_W);
+      return { x: x + w / 2 - dw / 2, y: floorY - DOOR_H, w: dw, h: DOOR_H };
+    }
     const top = floorY - FACADE_ROWS * TILE + 8;
     return { x, y: top, w, h: floorY - TILE - top };
   }
@@ -882,7 +944,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   // ------------------------------------------------------------ 怪物
 
   protected addActor(obj: Phaser.GameObjects.Container, x: number, y: number, speed: number, w = 0, h = 0): Actor {
-    obj.setPosition(x, y).setDepth(110);
+    obj.setPosition(x, y);
+    this.addShadow(obj, Math.max(30, w || 30));
+    this.ySort(obj);
     return { obj, x, y, speed, w, h };
   }
 

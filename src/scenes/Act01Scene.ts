@@ -52,15 +52,21 @@ export class Act01Scene extends RoomScene {
     };
     const others = [member('kanade', '奏'), member('ena', '绘名'), member('mizuki', '瑞希')];
     const spots = [this.tileCenter(2, 2), this.tileCenter(2, 4), this.tileCenter(1, 3)];
-    others.forEach((f, i) => f.setPosition(spots[i].x, spots[i].y + 8).setDepth(90 + i));
+    others.forEach((f, i) => {
+      f.setPosition(spots[i].x, spots[i].y + 8);
+      this.addShadow(f);
+      this.ySort(f);
+    });
     this.facing = 'right';
     this.syncPlayer();
 
     // 走廊尽头的小女孩：小学制服，发型和真冬小时候一样（不点破）
     const end = this.tileCenter(29, 3);
-    const girl = this.add.container(end.x, end.y + 8).setDepth(95);
+    const girl = this.add.container(end.x, end.y + 8);
     const girlImg = poseImage(this, 'mafuyu_child_back', CHILD_HEIGHT);
     girl.add(girlImg ?? makeFigure(this, 0, 0, { ...PALETTE.mafuyuChild, pose: 'away', scale: 0.75 }));
+    this.addShadow(girl, 22);
+    this.ySort(girl);
 
     await this.wait(1600);
     await this.say(this.text('act01.opening'));

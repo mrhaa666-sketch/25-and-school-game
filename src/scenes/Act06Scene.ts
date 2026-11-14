@@ -76,10 +76,10 @@ export class Act06Scene extends RoomScene {
         // 三、四周目：房间里没有人。衣服叠在椅子上，镜子被布盖着，管道在镜子后面
         this.objectImages.get('O')?.forEach((i) => i.setVisible(false));
         const o = this.objectCenter('O');
-        this.roomLayer.add(drawMemberScene(this, id, o.x - 46, o.y + 22, 110));
+        this.addRoomSorted(drawMemberScene(this, id, o.x - 46, o.y + 22, 110));
       } else {
         const p = this.objectCenter('R');
-        this.roomLayer.add(drawMemberScene(this, id, p.x, p.y + 10));
+        this.addRoomSorted(drawMemberScene(this, id, p.x, p.y + 10));
       }
     }
   }
