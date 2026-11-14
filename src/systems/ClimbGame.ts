@@ -1,0 +1,113 @@
+import Phaser from 'phaser';
+import { CHASE, GAME_HEIGHT, GAME_WIDTH, SANITY_COST, TIMERS } from '../core/constants';
+import { GameState } from '../core/GameState';
+import { makeFigure, makeMonster, PALETTE } from './figures';
+import { textStyle } from './style';
+
+export interface ClimbOptions {
+  monsterColor: number;
+  monsterName: string;
+  hint: string;
+}
+
+/**
+ * 攀爬（第三幕）：连打 空格 / ↓ 顺着绳子往下爬，怪物在上面的窗口抓住绳子往上拉。
+ * 限时内爬到三楼窗户 → true；超时 → false（结局 3）。
+ * 每被拉回一段，精神值 -3。
+ */
+export function runClimb(scene: Phaser.Scene, o: ClimbOptions): Promise<boolean> {
+  return new Promise((resolve) => {
+    const root = scene.add.container(0, 0).setDepth(990).setScrollFactor(0);
+    const cx = GAME_WIDTH / 2;
+    const topY = 150; // 四楼窗口
+    const goalY = 560; // 三楼窗口
+
+    // 外墙
+    const g = scene.add.graphics();
+    g.fillStyle(0x07080b, 1).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    g.fillStyle(0x15161a, 1).fillRect(cx - 260, 0, 520, GAME_HEIGHT);
+    for (const wy of [topY - 70, goalY - 40]) {
+      g.fillStyle(0x1e2a36, 1).fillRect(cx - 60, wy, 120, 110);
+      g.lineStyle(2, 0x2c3440, 1).strokeRect(cx - 60, wy, 120, 110);
+    }
+    root.add(g);
+    root.add(scene.add.text(cx + 80, goalY - 30, '三楼', textStyle(14, '#55524c')));
+
+    const rope = scene.add.line(0, 0, cx, topY - 20, cx, GAME_HEIGHT, 0xb8ab90).setOrigin(0).setLineWidth(2);
+    root.add(rope);
+    const monster = makeMonster(scene, cx, topY - 4, o.monsterColor, o.monsterName, 0.9).setVisible(false);
+    root.add(monster);
+    const climber = makeFigure(scene, cx, topY + 40, { ...PALETTE.mafuyu });
+    root.add(climber);
+    const hint = scene.add.text(cx, GAME_HEIGHT - 40, o.hint, textStyle(16, '#7d7a74')).setOrigin(0.5);
+    root.add(hint);
+    const timeBar = scene.add.graphics();
+    root.add(timeBar);
+
+    let progress = 0;
+    let elapsed = 0;
+    let nextPull = CHASE.climbPullStartSec * 1000;
+    let done = false;
+    const total = TIMERS.climbSec * 1000;
+
+    const yFor = (p: number) => topY + 40 + ((goalY + 60 - (topY + 40)) * p) / CHASE.climbGoal;
+
+    const finish = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      scene.input.keyboard?.off('keydown', onKey);
+      scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate);
+      if (ok) {
+        scene.tweens.add({ targets: climber, x: cx - 40, duration: 300, yoyo: true });
+        scene.time.delayedCall(700, () => {
+          root.destroy();
+          resolve(true);
+        });
+      } else {
+        // 绳子被整个拉上去
+        scene.tweens.add({ targets: climber, y: -80, duration: 2200, ease: 'Cubic.easeIn' });
+        scene.time.delayedCall(2400, () => {
+          root.destroy();
+          resolve(false);
+        });
+      }
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (done || e.repeat) return;
+      if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'KeyS') {
+        progress = Math.min(CHASE.climbGoal, progress + CHASE.climbPerPress);
+        climber.y = yFor(progress);
+        if (progress >= CHASE.climbGoal) finish(true);
+      }
+    };
+
+    const onUpdate = (_t: number, delta: number) => {
+      if (done) return;
+      elapsed += delta;
+      if (elapsed >= CHASE.climbPullStartSec * 1000) {
+        monster.setVisible(true);
+        progress = Math.max(0, progress - (CHASE.climbPullPerSec * delta) / 1000);
+        if (elapsed >= nextPull) {
+          nextPull += CHASE.climbPullEverySec * 1000;
+          progress = Math.max(0, progress - CHASE.climbPullBack);
+          GameState.deductSanity(SANITY_COST.ropePulled, 'rope');
+          scene.cameras.main.shake(160, 0.006);
+          scene.tweens.add({ targets: monster, y: topY - 16, duration: 90, yoyo: true });
+        }
+      }
+      climber.y = yFor(progress);
+      rope.setTo(cx, topY - 20 - (monster.visible ? Math.sin(elapsed / 60) * 3 : 0), cx, GAME_HEIGHT);
+      const left = Math.max(0, 1 - elapsed / total);
+      timeBar.clear().fillStyle(0x8a1a1a, 0.8).fillRect(cx - 120, 24, 240 * left, 4);
+      if (elapsed >= total) finish(false);
+    };
+
+    scene.input.keyboard?.on('keydown', onKey);
+    scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      done = true;
+      scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate);
+    });
+  });
+}

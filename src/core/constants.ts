@@ -44,6 +44,27 @@ export const TIMERS = {
   inviteRefuseSec: 3,
 } as const;
 
+/** 追逐与小游戏的手感数值。都是建议值，试玩后再调 */
+export const CHASE = {
+  /** 碰到就算被抓 */
+  caughtDist: 26,
+  /** 追逐战 1：怪物 A 出现后停顿多久才冲过来（毫秒） */
+  chase1Delay: 900,
+  chase1Speed: 175,
+  /** 追逐战 2：群体速度（真冬走 150 / 跑 250，体力有限） */
+  chase2Speed: 160,
+  chase2Count: 5,
+  /** 进入这个距离算「近距离」：屏幕边缘泛红，每秒 -1 */
+  chase2NearDist: 190,
+  /** 攀爬：需要的进度、每次按键前进、怪物每隔多久拉一次、每次拉回多少、持续往上的拉力（每秒） */
+  climbGoal: 100,
+  climbPerPress: 6,
+  climbPullEverySec: 1.6,
+  climbPullBack: 9,
+  climbPullPerSec: 2,
+  climbPullStartSec: 1.2,
+} as const;
+
 export const MOVE = {
   walkSpeed: 150,
   runSpeed: 250,

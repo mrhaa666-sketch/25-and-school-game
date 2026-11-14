@@ -10,6 +10,7 @@ export function debugEnabled(): boolean {
 }
 
 export function buildDebugMenu(scene: Phaser.Scene, close: () => void): ListMenu {
+  let target = 2;
   const jump = (act: number) => {
     close();
     GameState.patch({ act });
@@ -30,9 +31,8 @@ export function buildDebugMenu(scene: Phaser.Scene, close: () => void): ListMenu
         },
       },
       { label: '获得全部 12 份材料', action: () => MATERIALS.forEach((m) => GameState.addMaterial(m.id)) },
-      { label: '跳到第二幕', action: () => jump(2) },
-      { label: '跳到第六幕', action: () => jump(6) },
-      { label: '跳到第十幕（大门）', action: () => jump(10) },
+      { label: () => `目标：第 ${target} 幕（确认切换）`, action: () => (target = (target % 10) + 1) },
+      { label: () => `跳到第 ${target} 幕`, action: () => jump(target) },
       { label: '关闭', action: close },
     ],
     420,

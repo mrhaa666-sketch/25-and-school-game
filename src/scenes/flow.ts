@@ -13,16 +13,12 @@ export const SCENE = {
   title: 'Title',
   ui: 'UI',
   story: 'Story',
-  act02: 'Act02',
-  placeholder: 'ActPlaceholder',
 } as const;
 
-/** 已经做好的幕。没做好的幕先进占位场景（M2 起逐个替换）。 */
-const ACT_SCENES: Record<number, string> = {
-  2: SCENE.act02,
-};
+/** 第 n 幕对应的场景 key */
+export const actKey = (n: number) => `Act${String(n).padStart(2, '0')}`;
 
-const GAMEPLAY_SCENES = [SCENE.act02, SCENE.placeholder];
+const GAMEPLAY_SCENES = Array.from({ length: 10 }, (_, i) => actKey(i + 1));
 
 function stopGameplay(scene: Phaser.Scene): void {
   for (const key of GAMEPLAY_SCENES) {
@@ -38,17 +34,12 @@ export function startAct(scene: Phaser.Scene, act: number, deduct = true): void 
   if (deduct) GameState.enterAct(act);
   else GameState.persist();
 
-  // 第一幕是纯演出（仅一周目）。正式演出在 M2 制作，先用文字占位
-  if (act === 1) {
-    showStory(scene, { lines: tLines('act01.opening', GameState.save.cycle), onDone: (s) => startAct(s, 2) });
-    return;
-  }
 
   stopGameplay(scene);
   if (scene.scene.isActive(SCENE.story)) scene.scene.stop(SCENE.story);
   if (!scene.scene.isActive(SCENE.ui)) scene.scene.launch(SCENE.ui);
 
-  const key = ACT_SCENES[act] ?? SCENE.placeholder;
+  const key = actKey(act);
   scene.scene.launch(key, { act });
   scene.scene.bringToTop(SCENE.ui);
   if (scene.scene.key !== SCENE.ui && scene.scene.key !== key) scene.scene.stop();
@@ -77,14 +68,23 @@ function showStory(scene: Phaser.Scene, data: StoryData): void {
 
 // ---------------------------------------------------------------- 结局
 
+/** 结局文本：endings.e{id}，{monsterA} / {monsterB} 替换成本周目的怪物名 */
+export function endingLines(id: number): string[] {
+  const c = GameState.cycleDef;
+  return tLines(`endings.e${id}`, GameState.save.cycle).map((l) =>
+    l.replace('{monsterA}', c.monsterA.name).replace('{monsterB}', c.monsterB.name),
+  );
+}
+
 /**
  * 触发结局。1~8：演出后回到当前周目开头；9：演出后直接进入补充周目。
- * 具体的结局演出在各幕制作时补上，这里先用文字占位。
+ * 场景里先做画面上的演出，然后调用这里显示结局文字。
  */
 export function triggerEnding(scene: Phaser.Scene, id: number, lines?: string[]): void {
   const def = ENDINGS.find((e) => e.id === id)!;
   GameState.unlockEnding(id);
   const header = `${tUi('endingLabel')} ${id} · ${def.title}`;
+  if (!lines && id <= 8) lines = endingLines(id);
 
   if (id >= 1 && id <= 8) {
     showStory(scene, {
