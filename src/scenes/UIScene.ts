@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { EV, GameState } from '../core/GameState';
-import { GAME_WIDTH } from '../core/constants';
+import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { getMaterial } from '../core/progress';
 import { Audio } from '../systems/audio';
 import { cycleCountLabel, tUi } from '../core/text';
@@ -126,6 +126,26 @@ export class UIScene extends Phaser.Scene {
 
   say(lines: string | string[], onDone?: () => void): void {
     this.dialogueBox.show(lines, onDone);
+  }
+
+  private cg?: Phaser.GameObjects.Image;
+
+  /** 铺满画面的 CG（在对话框下面）。缺图时什么也不做，返回 false */
+  showCG(key: string): boolean {
+    if (!this.textures.exists(key)) return false;
+    this.cg?.destroy();
+    this.cg = this.add.image(0, 0, key).setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setDepth(850).setAlpha(0);
+    this.tweens.add({ targets: this.cg, alpha: 1, duration: 700 });
+    return true;
+  }
+
+  hideCG(): Promise<void> {
+    const cg = this.cg;
+    this.cg = undefined;
+    if (!cg) return Promise.resolve();
+    return new Promise((resolve) =>
+      this.tweens.add({ targets: cg, alpha: 0, duration: 600, onComplete: () => (cg.destroy(), resolve()) }),
+    );
   }
 
   /** 用 Promise 写演出脚本更顺手：await ui.sayAsync([...]) */

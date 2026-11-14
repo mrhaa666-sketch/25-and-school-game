@@ -7,7 +7,7 @@ import type { MaterialDef } from '../core/types';
 import { makeFigure, PALETTE } from '../systems/figures';
 import { Audio, type SoundKey } from '../systems/audio';
 import { MafuyuSprite, PLAYER_HEIGHT } from '../systems/playerSprite';
-import { fitImage, MAFUYU_STAND_REF, poseImage, tex } from '../systems/sprites';
+import { CG_MOMENTS, fitImage, MAFUYU_STAND_REF, poseImage, tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 import { createCameraFx } from '../systems/VisualFilter';
 import { Darkness, type LightSource } from '../systems/Darkness';
@@ -329,12 +329,21 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     return new Promise((resolve) => this.time.delayedCall(ms, resolve));
   }
 
-  protected say(lines: string | string[]): Promise<void> {
-    return this.ui.sayAsync(lines);
+  protected async say(lines: string | string[]): Promise<void> {
+    // 刚取出的台词登记了 CG：说这几句的时候铺上 CG，说完淡出
+    const cg = this.pendingCG;
+    this.pendingCG = undefined;
+    const shown = cg ? this.ui.showCG(tex('cg', cg)) : false;
+    await this.ui.sayAsync(lines);
+    if (shown) await this.ui.hideCG();
   }
+
+  /** text() 取出的台词如果登记了 CG（CG_MOMENTS），下一次 say() 时显示 */
+  private pendingCG?: string;
 
   /** 当前周目的剧情文本 */
   protected text(key: string): string[] {
+    this.pendingCG = CG_MOMENTS[key];
     return tLines(key, GameState.save.cycle);
   }
 

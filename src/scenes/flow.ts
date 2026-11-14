@@ -7,6 +7,7 @@ import { ENDINGS, GameState } from '../core/GameState';
 import * as P from '../core/progress';
 import { cycleCountLabel, tLines, tRaw, tUi } from '../core/text';
 import { Audio } from '../systems/audio';
+import { tex } from '../systems/sprites';
 import type { StoryData } from './StoryScene';
 
 export const SCENE = {
@@ -98,10 +99,16 @@ export function triggerEnding(scene: Phaser.Scene, id: number, lines?: string[])
   if (!lines && id <= 8) lines = endingLines(id);
 
   if (id >= 1 && id <= 8) {
+    // 有结局 CG 就铺满画面，没有就用原来的小图（结局 5 的考场特写在场景里已经出现过）
+    // 先找这个周目专用的（结局 1、4 的怪物每个周目不同），再找通用的
+    const cyc = GameState.save.cycle;
+    const cg = [tex('cg', `cg_e${id}_c${cyc}`), tex('cg', `cg_e${id}`)].find((k) => scene.textures.exists(k)) ?? '';
+    const hasCG = !!cg;
     showStory(scene, {
       header,
       lines: lines ?? [def.summary],
-      image: ENDING_IMAGES[id],
+      image: hasCG ? undefined : ENDING_IMAGES[id],
+      bg: hasCG ? cg : undefined,
       onDone: (s) => {
         GameState.replace(P.restartCycle(GameState.save));
         startAct(s, GameState.save.act);
@@ -172,7 +179,14 @@ export function playTransition(scene: Phaser.Scene, kind: TransitionKind): void 
     lines.push(...tLines('transition.sit', s.cycle));
     // 只有常规周目（二~四）和进入终周目时才会多一个乱码；补充周目之间不再增加
     const garbleGrew = s.cycleCount <= 4;
-    if (garbleGrew) lines.push(...tLines('transition.phone', s.cycle));
+    if (garbleGrew) {
+      // 手机屏幕的特写 CG（缺图时 #bg 指令会退回黑屏，不影响）
+      const cg = tex('cg', 'cg_phone');
+      const hasCG = scene.textures.exists(cg);
+      if (hasCG) lines.push(`#bg ${cg}`);
+      lines.push(...tLines('transition.phone', s.cycle));
+      if (hasCG) lines.push('#bg');
+    }
     // 分不清是谁的声音：以「？？？」的台词出现
     lines.push(`@${tRaw<string>('voice.speaker')} ${tRaw<string>(kind === 'final' ? 'voice.last' : 'voice.continue')}`);
   }

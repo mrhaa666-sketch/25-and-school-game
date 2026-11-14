@@ -42,6 +42,9 @@ const GROUPS: Record<string, { dir: string; names: string[] }> = {
     'curtain_bed', 'iv_stand', 'plaster_shelf', 'paint_sink', 'music_stand', 'metronome', 'trophy_case', 'shoes_pair',
     'mafuyu_award_wall', 'ena_portrait_01', 'ena_portrait_02', 'ena_portrait_03', 'ena_portrait_04', 'ena_portrait_05', 'ena_portrait_06',
     'ena_canvas_pile', 'mizuki_ribbon_01', 'mizuki_ribbon_02', 'mizuki_ribbon_03', 'mizuki_ribbon_04', 'mizuki_mannequin', 'kanade_cup_stack', 'rope_hanging'] },
+  // CG：剧情关键时刻和结局的插画（1920×1080），缺图时跳过，游戏照常
+  cg: { dir: 'ui/cg/', names: ['cg_act01_girl', 'cg_act02_wake', 'cg_act04_fall', 'cg_act07_fork', 'cg_act09_choir', 'cg_final_outside', 'cg_phone', 'cg_e1', 'cg_e2', 'cg_e3', 'cg_e4', 'cg_e6', 'cg_e7', 'cg_e8',
+    'cg_e1_c1', 'cg_e1_c2', 'cg_e1_c3', 'cg_e1_c4', 'cg_e4_c1', 'cg_e4_c2', 'cg_e4_c3', 'cg_e4_c4'] },
   decal: { dir: 'sprites/decals/', names: ['decal_stain_01', 'decal_stain_02', 'decal_stain_03', 'decal_stain_04', 'decal_paper_01', 'decal_paper_02', 'decal_paper_03', 'decal_crack_01', 'decal_crack_02', 'decal_footprint_01', 'decal_glass_01', 'decal_chalk_01', 'decal_test_01', 'decal_test_02', 'decal_score_01', 'decal_score_02', 'decal_score_03', 'decal_score_04'] },
   backdrop: { dir: 'sprites/backdrop/', names: ['night_view', 'dawn_view'] },
   mon: { dir: 'sprites/monsters/', names: ['faceless', 'flying_score', 'moving_door', 'moving_door_folded', 'note', 'nurse', 'piano', 'piano_strings', 'plaster', 'turned_back', 'mafuyus_child', 'mafuyus_middle', 'mafuyus_high', 'mafuyus_doctor'] },
@@ -56,8 +59,21 @@ for (const [prefix, g] of Object.entries(GROUPS)) {
   for (const n of g.names) SPRITE_FILES[`${prefix}:${n}`] = `${g.dir}${n}.png`;
 }
 
+/**
+ * 房间里的剧情时刻 → CG。台词显示时把 CG 铺满画面，台词说完淡出。
+ * 只在这里登记，不改剧本文字。
+ */
+export const CG_MOMENTS: Record<string, string> = {
+  'act01.girl': 'cg_act01_girl',
+  'act02.wake': 'cg_act02_wake',
+  'act04.fall': 'cg_act04_fall',
+  'act07.fork': 'cg_act07_fork',
+  'act09.sing': 'cg_act09_choir',
+  'finalrun.outside': 'cg_final_outside',
+};
+
 /** 例：tex('obj', 'bed') → 'obj:bed' */
-export const tex = (prefix: 'obj' | 'mon' | 'scn' | 'tile' | 'bg' | 'mat' | 'light' | 'decal' | 'backdrop', name: string) => `${prefix}:${name}`;
+export const tex = (prefix: 'obj' | 'mon' | 'scn' | 'tile' | 'bg' | 'mat' | 'light' | 'decal' | 'backdrop' | 'cg', name: string) => `${prefix}:${name}`;
 
 /** 官方小人的帧（不提交，本地放在 assets/sprites/official/） */
 const OFFICIAL: Record<string, { front: string[]; back: string[]; blink: string[] }> = {};
