@@ -37,21 +37,33 @@ export class MafuyuSprite {
     };
   }
 
+  /** 只要有侧面图（仓库里的 GPT 图）就能用；官方小人的正面 / 背面帧是可选的 */
   static available(scene: Phaser.Scene): boolean {
     const k = MafuyuSprite.keys();
-    return hasAll(scene, [...k.front, ...k.back, ...k.blink, ...k.left, ...k.right]);
+    return hasAll(scene, [...k.left, ...k.right]);
   }
+
+  /** 本地有没有官方小人的正面 / 背面帧（不在仓库里） */
+  static hasOfficial(scene: Phaser.Scene): boolean {
+    const k = MafuyuSprite.keys();
+    return hasAll(scene, [...k.front, ...k.back, ...k.blink]);
+  }
+
+  private readonly blinkFrames: string[];
 
   constructor(scene: Phaser.Scene, private readonly height = PLAYER_HEIGHT) {
     const k = MafuyuSprite.keys();
-    const down = [...k.front, ...k.blink];
+    const side = (keys: string[]) => ({ walk: [keys[1], keys[0]], idle: [keys[0]], fps: 5, m: groupMetrics(scene, keys, [keys[0]]) });
+    const official = MafuyuSprite.hasOfficial(scene);
+    // 没有官方帧时，朝上 / 朝下也用侧面图（朝下用朝右的，朝上用朝左的），不再退回色块
+    this.blinkFrames = official ? k.blink : [];
     this.groups = {
-      down: { walk: k.front, idle: [k.blink[0]], fps: 9, m: groupMetrics(scene, down, k.blink) },
-      up: { walk: k.back, idle: [k.back[0]], fps: 9, m: groupMetrics(scene, k.back, k.back) },
+      down: official ? { walk: k.front, idle: [k.blink[0]], fps: 9, m: groupMetrics(scene, [...k.front, ...k.blink], k.blink) } : side(k.right),
+      up: official ? { walk: k.back, idle: [k.back[0]], fps: 9, m: groupMetrics(scene, k.back, k.back) } : side(k.left),
       left: { walk: [k.left[1], k.left[0]], idle: [k.left[0]], fps: 5, m: groupMetrics(scene, k.left, [k.left[0]]) },
       right: { walk: [k.right[1], k.right[0]], idle: [k.right[0]], fps: 5, m: groupMetrics(scene, k.right, [k.right[0]]) },
     };
-    this.image = scene.add.image(0, 0, k.blink[0]);
+    this.image = scene.add.image(0, 0, this.groups.down.idle[0]);
     this.applyGroup('down');
   }
 
@@ -75,8 +87,8 @@ export class MafuyuSprite {
     }
     this.t = 0;
     // 朝下站着时偶尔眨眼：01→04→01
-    if (this.dir === 'down') {
-      const blink = MafuyuSprite.keys().blink;
+    if (this.dir === 'down' && this.blinkFrames.length) {
+      const blink = this.blinkFrames;
       if (this.blinkT < 0) {
         this.blinkIn -= delta;
         if (this.blinkIn <= 0) {

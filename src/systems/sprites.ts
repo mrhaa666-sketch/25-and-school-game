@@ -9,6 +9,7 @@
  * 原点放在脚底中央。
  */
 import Phaser from 'phaser';
+import { imageFiles } from 'virtual:asset-list';
 
 const C = 'sprites/characters/';
 const O = 'sprites/official/';
@@ -34,7 +35,7 @@ export const SPRITE_FILES: Record<string, string> = {
 /** 场景类素材：key 就是文件名（不带扩展名），前缀区分类别 */
 const GROUPS: Record<string, { dir: string; names: string[] }> = {
   obj: { dir: 'sprites/objects/', names: ['bed', 'blackboard', 'chair', 'class_door', 'easel_portraits', 'grand_piano', 'iron_door', 'lectern', 'locker', 'medicine_cabinet', 'medicine_cabinet_open', 'mirror', 'office_desk', 'pink_door', 'pipe_entrance', 'ropes', 'school_desk', 'school_desk_paper', 'school_desk_paper_filled', 'school_gate', 'scissors', 'shoe_locker', 'stairs', 'trash_can', 'wall_clock', 'window_night'] },
-  mon: { dir: 'sprites/monsters/', names: ['faceless', 'flying_score', 'moving_door', 'moving_door_folded', 'note', 'nurse', 'piano', 'piano_strings', 'plaster', 'turned_back'] },
+  mon: { dir: 'sprites/monsters/', names: ['faceless', 'flying_score', 'moving_door', 'moving_door_folded', 'note', 'nurse', 'piano', 'piano_strings', 'plaster', 'turned_back', 'mafuyus_child', 'mafuyus_middle', 'mafuyus_high', 'mafuyus_doctor'] },
   scn: { dir: 'sprites/scenes/', names: ['floor2_clothes', 'floor2_lying', 'floor3_canvas', 'floor3_canvas_cut', 'floor3_hanged', 'music_kanade_blank', 'music_kanade_play', 'music_kanade_shatter'] },
   tile: { dir: 'tiles/', names: ['floor_final', 'floor_pink_room', 'floor_pipe', 'floor_school', 'floor_school_ena', 'floor_school_kanade', 'floor_school_mizuki', 'wall_school', 'wall_school_ena', 'wall_school_mizuki'] },
   bg: { dir: 'ui/bg/', names: ['climb_facade', 'ending10_lot', 'ending9_home', 'exam_closeup', 'final_gate', 'title'] },
@@ -70,7 +71,9 @@ export function preloadSprites(scene: Phaser.Scene): void {
   scene.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
     if (SPRITE_FILES[file.key]) console.info(`[sprites] 没有找到 ${file.url}，使用占位图`);
   });
-  for (const [key, path] of Object.entries(SPRITE_FILES)) scene.load.image(key, path);
+  // 只加载实际存在的文件（例如官方小人素材不在仓库里，没放就跳过）
+  const exists = new Set(imageFiles);
+  for (const [key, path] of Object.entries(SPRITE_FILES)) if (exists.has(path)) scene.load.image(key, path);
 }
 
 export function hasAll(scene: Phaser.Scene, keys: string[]): boolean {

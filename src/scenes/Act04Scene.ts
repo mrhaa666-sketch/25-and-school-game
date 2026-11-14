@@ -4,7 +4,7 @@ import { CHASE, GAME_HEIGHT, GAME_WIDTH, SANITY_COST, TILE, TIMERS } from '../co
 import { GameState } from '../core/GameState';
 import { hintLevel } from '../core/progress';
 import { ashBurst, makeFigure, makeMonsterById, PALETTE, ROPE_VARIANT } from '../systems/figures';
-import { fitImage, tex } from '../systems/sprites';
+import { fitImage, poseImage, tex } from '../systems/sprites';
 import { actKey, startAct, triggerEnding } from './flow';
 import { drawMemberScene, hasMemberOverlay, showMemberOverlay } from './memberScenes';
 import { type Actor, RoomScene } from './RoomScene';
@@ -280,8 +280,21 @@ export class Act04Scene extends RoomScene {
           { ...PALETTE.mafuyu, body: 0xe8e8e8 },
           { ...PALETTE.mafuyu, body: 0x3a3a4a },
         ];
-        obj = makeFigure(this, 0, 0, variants[i % variants.length]);
-        obj.add(this.add.arc(0, -32, 5, 20, 160, false, 0, 0).setStrokeStyle(1.5, 0x111111));
+        // 有图就用图：小学 / 初中 / 现在 / 医生，身高逐个递增（第五个再从小学开始）
+        const ART = [
+          { file: 'mafuyus_child', h: 50 },
+          { file: 'mafuyus_middle', h: 58 },
+          { file: 'mafuyus_high', h: 66 },
+          { file: 'mafuyus_doctor', h: 74 },
+        ];
+        const art = ART[i % ART.length];
+        const img = poseImage(this, tex('mon', art.file), art.h);
+        if (img) {
+          obj = this.add.container(0, 0, [img.setTint(0xc8c8c8)]);
+        } else {
+          obj = makeFigure(this, 0, 0, variants[i % variants.length]);
+          obj.add(this.add.arc(0, -32, 5, 20, 160, false, 0, 0).setStrokeStyle(1.5, 0x111111));
+        }
       } else {
         obj = makeMonsterById(this, 0, 0, def.id, color, i === 0 ? def.name : '', 0.85);
       }
