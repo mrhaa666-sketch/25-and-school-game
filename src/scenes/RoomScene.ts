@@ -31,6 +31,8 @@ const FACADE_ROWS = 3;
 /** 嵌在后墙上的门洞 / 门的高度：约 2.4 格 */
 const DOOR_H = Math.round(TILE * 2.4);
 const DOOR_W = Math.round(TILE * 1.5);
+/** 窗外远景的视差系数 */
+const WINDOW_PARALLAX = 0.85;
 /** 前景层的视差系数 */
 const FG_PARALLAX = 1.15;
 
@@ -114,6 +116,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   protected extraLights: LightSource[] = [];
   /** 前景层（N4）：画在角色上方、带视差的东西；fade 是被角色挡住时的淡出系数 */
   private foreground: { obj: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics; base: number; w: number; h: number; fade: number; lamp?: boolean }[] = [];
+  /** 窗外远景（N2）：每扇窗一块，按镜头位置做视差 */
+  private windowViews: { ts: Phaser.GameObjects.TileSprite; x: number; scale: number }[] = [];
   /** 光里的灰尘（N5） */
   private dust?: Phaser.GameObjects.Graphics;
   private motes: { x: number; y: number; vx: number; vy: number; life: number; age: number; light: RoomLightState }[] = [];
@@ -416,6 +420,81 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     return r < 0.7 ? null : r < 0.8 ? 'tilted' : r < 0.9 ? 'fallen' : 'carved';
   }
 
+  // ------------------------------------------------------------ 窗外远景（N2）
+
+  /** 远景贴图：night_view / dawn_view（2048×1024，左右无缝）；没到时用代码画的占位 */
+  private backdropKey(): string {
+    const dawn = GameState.isFinal;
+    const key = tex('backdrop', dawn ? 'dawn_view' : 'night_view');
+    if (this.textures.exists(key)) return key;
+    const fb = dawn ? 'backdrop-fallback-dawn' : 'backdrop-fallback-night';
+    if (!this.textures.exists(fb)) {
+      const w = 1024;
+      const h = 512;
+      const t = this.textures.createCanvas(fb, w, h);
+      if (t) {
+        const ctx = t.getContext();
+        const sky = ctx.createLinearGradient(0, 0, 0, h);
+        if (dawn) {
+          sky.addColorStop(0, '#5a6a80');
+          sky.addColorStop(0.55, '#b8b4ae');
+          sky.addColorStop(1, '#d8cfc0');
+        } else {
+          sky.addColorStop(0, '#05070c');
+          sky.addColorStop(0.6, '#141a26');
+          sky.addColorStop(1, '#1c2230');
+        }
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, w, h);
+        if (!dawn) {
+          ctx.fillStyle = 'rgba(200,205,215,0.5)';
+          for (let i = 0; i < 40; i++) ctx.fillRect((i * 263) % w, (i * 97) % (h * 0.45), 1.5, 1.5);
+        }
+        // 远处的屋顶和楼：下半部分的一排剪影（左右接得上）
+        ctx.fillStyle = dawn ? '#3a3a40' : '#07080b';
+        let x = 0;
+        let i = 0;
+        while (x < w) {
+          const bw = 40 + ((i * 37) % 70);
+          const bh = h * (0.12 + ((i * 53) % 30) / 100);
+          ctx.fillRect(x, h - bh - h * 0.25, Math.min(bw, w - x), bh + h * 0.25);
+          x += bw;
+          i++;
+        }
+        t.refresh();
+      }
+    }
+    return fb;
+  }
+
+  /**
+   * 一扇窗的远景：一块和玻璃一样大的平铺图，每帧按镜头位置移动纹理，
+   * 看起来远景比场景移动得慢（视差 0.85），横向循环。
+   * 纵向位置跟楼层走：四楼看到的天空多，一楼看到的屋顶多。
+   */
+  private addWindowView(glass: Phaser.Geom.Rectangle, def: RoomDef): void {
+    const key = this.backdropKey();
+    const src = this.textures.get(key).getSourceImage();
+    // 远景按 6 格高缩放
+    const scale = (TILE * 6) / src.height;
+    const r = new Phaser.Geom.Rectangle(glass.x + glass.width * 0.1, glass.y + glass.height * 0.1, glass.width * 0.8, glass.height * 0.8);
+    const ts = this.add.tileSprite(r.x, r.y, r.width, r.height, key).setOrigin(0).setTileScale(scale).setTint(0xa0a0a0);
+    const storey = def.floor ?? 4;
+    const v = { 4: 0.1, 3: 0.25, 2: 0.4, 1: 0.55 }[storey] ?? 0.1;
+    ts.tilePositionY = (src.height * v);
+    this.roomLayer.add(ts);
+    this.windowViews.push({ ts, x: r.x, scale });
+  }
+
+  private updateWindowViews(): void {
+    if (!this.windowViews.length) return;
+    const sx = this.cameras.main.scrollX;
+    for (const w of this.windowViews) {
+      // 远景上对应窗左边缘的位置：窗的世界坐标减去镜头移动的 15%
+      w.ts.tilePositionX = (w.x - (1 - WINDOW_PARALLAX) * sx) / w.scale;
+    }
+  }
+
   // ------------------------------------------------------------ 装饰
 
   /** 装饰层：不参与碰撞，画在地板 / 立面上、物件下面。缺图时画色块 */
@@ -613,6 +692,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const cx = this.originX + ((comp.x0 + comp.x1 + 1) / 2) * TILE;
       const cw = (comp.x1 - comp.x0 + 1) * TILE;
       if (isBack.has(`${comp.x0},${comp.y1}`)) {
+        // 窗本身：窗外比屋里亮一点，远景看得见
+        out.push({ x: cx, y: this.originY + (comp.y1 + 1 - FACADE_ROWS * 0.62) * TILE, radius: cw * 0.55 + 8, intensity: 0.5, squash: 1 });
         // 后墙上的窗：光落在窗下的地面
         out.push({ tex: 'light_window', x: cx, y: this.originY + (comp.y1 + 1.8) * TILE, radius: cw * 0.5 + TILE * 1.1, intensity: 0.8, squash: 0.6 });
       } else {
@@ -767,6 +848,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
 
   private updateDarkness(): void {
     this.updateForeground();
+    this.updateWindowViews();
     this.updateDust(this.game.loop.delta);
     if (!this.darkness) return;
     this.darkness.beat = this.beatShade ? this.beatShade.alpha / 0.22 : 0;
@@ -942,6 +1024,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.roomExtras = [];
     this.foreground = [];
     this.motes = [];
+    this.windowViews = [];
     this.objectImages = new Map();
     const floorKey = this.floorTexFor(def);
     const texturedFloor = this.textures.exists(floorKey);
@@ -1122,6 +1205,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         : null;
       if (img) {
         img.setTint(0xc8c8c8);
+        // N2：后墙上的窗，玻璃后面是远景（画在窗的图下面，从透明的玻璃透出来）
+        if (look === 'window_night' && isBack.has(`${comp.x0},${comp.y1}`)) this.addWindowView(img.getBounds(), def);
         if (deskFx === 'tilted') img.setAngle(9);
         if (deskFx === 'fallen') img.setAngle(-80).setTint(0xa8a8a8);
         if (obj.fit) {
