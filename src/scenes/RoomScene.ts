@@ -470,7 +470,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         const mx = (dx / len) * speed * dt;
         const my = (dy / len) * speed * dt;
         if (!this.blockedBox(this.pos.x + mx, this.pos.y, BODY_W, BODY_H)) this.pos.x += mx;
+        else if (!dy) this.cornerAssist('y', Math.sign(dx), speed * dt);
         if (!this.blockedBox(this.pos.x, this.pos.y + my, BODY_W, BODY_H)) this.pos.y += my;
+        else if (!dx) this.cornerAssist('x', Math.sign(dy), speed * dt);
         this.syncPlayer();
         this.checkExit();
       }
@@ -480,6 +482,25 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.drawStamina();
     this.updateGhost(delta);
     this.onUpdate(time, delta);
+  }
+
+  /**
+   * 转角辅助：朝某方向走被挡住，但所在格子的前方是通的（只是没对齐格子），
+   * 就沿另一条轴把玩家往格子中线推。窄管道、门口转弯时不会卡住。
+   */
+  private cornerAssist(axis: 'x' | 'y', dir: number, step: number): void {
+    const t = this.playerTile();
+    const ahead = axis === 'y' ? this.charAt(t.x + dir, t.y) : this.charAt(t.x, t.y + dir);
+    if (this.isSolid(ahead)) return;
+    const c = this.tileCenter(t.x, t.y);
+    if (axis === 'y') {
+      const target = c.y + BODY_H / 2; // 碰撞盒在格子里居中时的脚下位置
+      const d = Phaser.Math.Clamp(target - this.pos.y, -step, step);
+      if (d && !this.blockedBox(this.pos.x, this.pos.y + d, BODY_W, BODY_H)) this.pos.y += d;
+    } else {
+      const d = Phaser.Math.Clamp(c.x - this.pos.x, -step, step);
+      if (d && !this.blockedBox(this.pos.x + d, this.pos.y, BODY_W, BODY_H)) this.pos.x += d;
+    }
   }
 
   protected moveSpeed(running: boolean): number {
