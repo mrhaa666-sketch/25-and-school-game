@@ -1440,7 +1440,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       return ch !== ' ' && !wallish(x, y);
     };
     const out: { x: number; y: number }[] = [];
-    def.map.forEach((row, y) => [...row].forEach((_, x) => wallish(x, y) && walkable(x, y + 1) && out.push({ x, y })));
+    // 上方也是可走的格子时（两块区域之间的隔墙）不算后墙，画成矮的墙顶，免得立面盖住上面的地板
+    def.map.forEach((row, y) => [...row].forEach((_, x) => wallish(x, y) && walkable(x, y + 1) && !walkable(x, y - 1) && out.push({ x, y })));
     return out;
   }
 

@@ -49,7 +49,7 @@ export class Act04Scene extends RoomScene {
 
   create(): void {
     super.create();
-    Object.assign(this, { hasScissors: false, ropeCut: false, memberSeen: false, lingerMs: 0, chase: 'none', swarm: [], elapsed: 0, nearAcc: 0, examDoorX: null });
+    Object.assign(this, { hasScissors: false, ropeCut: false, memberSeen: false, lingerMs: 0, chase: 'none', swarm: [], elapsed: 0, nearAcc: 0, examDoorX: null, gateProg: new Map() });
     this.descending = undefined;
     this.descentTween = undefined;
     this.cuts = [];
@@ -300,7 +300,11 @@ export class Act04Scene extends RoomScene {
       } else {
         obj = makeMonsterById(this, 0, 0, def.id, color, i === 0 ? def.name : '', 0.85);
       }
-      const a = this.addActor(obj, x - i * 18, y + (i % 3) * 10, CHASE.chase2Speed * Phaser.Math.FloatBetween(0.94, 1.04), 0, 0);
+      // 有碰撞盒：沿墙滑动，配合绕行点绕过障碍（L2）
+      // 生成在门口往上的位置，卡进墙里的话再往上挪
+      let sy = y - (i % 3) * 10;
+      while (this.blockedBox(x - i * 18, sy, 18, 12) && sy > y - TILE * 3) sy -= 6;
+      const a = this.addActor(obj, x - i * 18, sy, CHASE.chase2Speed * Phaser.Math.FloatBetween(0.94, 1.04), 18, 12);
       this.swarm.push({ a, dy: ((i % 3) - 1) * 26 });
     }
   }
@@ -308,15 +312,16 @@ export class Act04Scene extends RoomScene {
   private updateChase(delta: number): void {
     const dt = delta / 1000;
     this.elapsed += delta;
-    const top = this.tileCenter(0, 1).y + 4;
-    const bottom = this.tileCenter(0, 3).y + 18;
     let nearest = Infinity;
     const scores = GameState.cycleDef.monsterB.id === 'flying_scores';
     for (const { a, dy } of this.swarm) {
-      // 乐谱在空中翻飞：上下飘
-      const wobble = scores ? Math.sin((this.elapsed + a.speed * 40) / 260) * 30 : 0;
-      this.moveActor(a, this.pos.x, Phaser.Math.Clamp(this.pos.y + dy + wobble, top, bottom), dt);
-      a.y = Phaser.Math.Clamp(a.y, top, bottom);
+      const wp = this.gateWaypoint(a);
+      if (wp) this.moveActor(a, wp.x, wp.y, dt);
+      else {
+        // 乐谱在空中翻飞：上下飘
+        const wobble = scores ? Math.sin((this.elapsed + a.speed * 40) / 260) * 30 : 0;
+        this.moveActor(a, this.pos.x, this.pos.y + dy + wobble, dt);
+      }
       if (scores && this.distToPlayer(a) < CHASE.caughtDist + 6) {
         this.scoreCut(a);
         continue;
@@ -338,15 +343,24 @@ export class Act04Scene extends RoomScene {
 
     // 坚持够时间后，前方出现一扇教室门
     if (this.examDoorX === null && this.elapsed >= TIMERS.chase2Sec * 1000) {
-      const tx = Math.min(this.playerTile().x + 7, this.room.map[0].length - 3);
-      const c = this.tileCenter(tx, 0);
+      // 前方 7 格以后第一面能放门的后墙（不落在绕行教室、门洞和障碍上）
+      const back = new Set(this.backWallCells(this.room).map((b) => `${b.x},${b.y}`));
+      const W = this.room.map[0].length;
+      let tx = Math.min(this.playerTile().x + 7, W - 3);
+      let ty = -1;
+      for (; tx < W - 2; tx++) {
+        const row = this.room.map.findIndex((r, y) => back.has(`${tx},${y}`) && r[tx] === '#' && back.has(`${tx - 1},${y}`) && back.has(`${tx + 1},${y}`));
+        if (row >= 0) {
+          ty = row;
+          break;
+        }
+      }
+      if (ty < 0) ty = 0;
+      const c = this.tileCenter(tx, ty);
       this.examDoorX = c.x;
-      const doorImg = fitImage(this, tex('obj', 'class_door'), { x: c.x - 22, y: c.y - TILE * 1.2 - 20, w: 44, h: TILE * 1.2 + 40 });
-      const door = doorImg ?? this.add.rectangle(c.x, c.y + 4, 34, 40, 0x6a5a48).setStrokeStyle(2, 0xb8a888);
-      door.setDepth(6);
-      this.tweens.add({ targets: door, alpha: { from: 0, to: 1 }, duration: 400 });
+      this.drawDoor({ id: 'class_door', color: 0, tex: 'class_door' }, c.x, c.y + TILE / 2);
       this.clearSwarm();
-      this.placeTrash(tx - 2);
+      this.placeTrash(tx - 2, ty + 3);
     }
     if (this.examDoorX !== null && Math.abs(this.pos.x - this.examDoorX) < 22) {
       this.chase = 'done';
@@ -356,12 +370,45 @@ export class Act04Scene extends RoomScene {
     }
   }
 
+  /** 每个怪物走到第几个障碍的第几个绕行点 */
+  private gateProg = new Map<Actor, { gate: number; wp: number }>();
+
+  /**
+   * 追逐走廊的绕行（L2）：怪物还没过某个障碍、而玩家已经到了障碍那边时，
+   * 先依次走这个障碍的绕行点（缺口、教室的门洞），走完再直接追人。没有要绕的就返回 null。
+   */
+  private gateWaypoint(a: Actor): { x: number; y: number } | null {
+    const gates = this.room.chaseGates;
+    if (!gates?.length) return null;
+    const toWorld = (p: { x: number; y: number }) => ({ x: this.originX + (p.x + 0.5) * TILE, y: this.originY + (p.y + 0.5) * TILE + 8 });
+    let prog = this.gateProg.get(a);
+    const gi = gates.findIndex((g) => a.x < this.originX + (g.endX + 0.5) * TILE);
+    if (gi < 0) return null;
+    const g = gates[gi];
+    if (this.pos.x < this.originX + g.startX * TILE) return null; // 玩家还在障碍这一边：直接追
+    if (!prog || prog.gate !== gi) {
+      prog = { gate: gi, wp: 0 };
+      this.gateProg.set(a, prog);
+    }
+    while (prog.wp < g.wps.length) {
+      const w = toWorld(g.wps[prog.wp]);
+      if (Phaser.Math.Distance.Between(a.x, a.y, w.x, w.y) > 14) return w;
+      prog.wp++;
+    }
+    // 绕行点走完了：把它推过障碍的终点，接着追人
+    return null;
+  }
+
   /** 四周目：被飞散的乐谱割伤 -5，乐谱被弹开。4 秒内被割 3 次 → 被追上 */
   private scoreCut(a: Actor): void {
     GameState.deductSanity(SANITY_COST.scoreCut, 'score-cut');
     this.cameras.main.flash(90, 120, 0, 0);
     Audio.play('paper', { rate: 1.6 });
+    // 往后弹开；弹进墙或障碍里就少弹一点
+    const from = a.x;
     a.x -= 170;
+    for (let back = 170; back > 0 && this.blockedBox(a.x, a.y, a.w, a.h); back -= 20) a.x = from - back + 20;
+    if (this.blockedBox(a.x, a.y, a.w, a.h)) a.x = from;
     a.obj.setPosition(a.x, a.y);
     const now = this.elapsed;
     this.cuts = [...this.cuts.filter((t) => now - t < 4000), now];
@@ -379,8 +426,10 @@ export class Act04Scene extends RoomScene {
   }
 
   /** 考场门旁边的垃圾桶（追逐路线上的材料：追逐结束后再调查） */
-  private placeTrash(tx: number): void {
-    const c = this.tileCenter(tx, 3);
+  private placeTrash(tx: number, ty = 3): void {
+    // 找一块空地（不放在障碍上）
+    for (let dx = 0; dx < 6 && this.charAt(tx, ty) !== '.'; dx++) tx--;
+    const c = this.tileCenter(tx, ty);
     this.trash = fitImage(this, tex('obj', 'trash_can'), { x: c.x - 18, y: c.y - 30, w: 36, h: 52 }) ?? this.add.rectangle(c.x, c.y, 24, 30, 0x3a3a3a);
     this.trash.setDepth(7);
     const m = this.materialsHere().find((x) => x.spot === 'trash_can');

@@ -91,6 +91,13 @@ export interface RoomExamine {
   cycle?: (1 | 2 | 3 | 4 | 'final')[];
 }
 
+/** 追逐走廊里的一个障碍：怪物在 startX～endX 之间先依次走绕行点（格坐标） */
+export interface ChaseGate {
+  startX: number;
+  endX: number;
+  wps: { x: number; y: number }[];
+}
+
 export interface RoomDef {
   id: string;
   map: string[];
@@ -118,6 +125,8 @@ export interface RoomDef {
   decor?: RoomDecor[];
   /** 一句话的调查点（L3） */
   examine?: RoomExamine[];
+  /** 追逐走廊的障碍和绕行点（L2） */
+  chaseGates?: ChaseGate[];
 }
 
 /** 走廊里的东西（L1）：只挡路，调查不到 */
@@ -149,26 +158,90 @@ function lampRow(y: number, x0: number, x1: number, step: number, seed = 0): Roo
 
 // ---------------------------------------------------------------- 程序生成的房间
 
-/** 被无限拉长的三楼走廊（追逐战 2）。真正的长度足够跑 30 秒以上 */
+/**
+ * 三楼的追逐走廊（追逐战 2，L2）。
+ *
+ * 追逐战 2 是「坚持 30 秒」：时间到了前方才出现考场的门，所以长度只要保证 30 秒跑不到头。
+ * 240 格（原来 300 格的 80%）；一直全速跑 30 秒也只有约 190 格。
+ *
+ * 走廊 5 格宽，分成 6 段，段与段之间轮流是：
+ * - 桌椅堆：挡住 3 排，从 2 排宽的缺口绕过去
+ * - 倒下的柜子：走廊整个堵死，从上方一间半开着的教室穿过去（同一张地图，不换房间）
+ * - 窄口：两边墙往里收，只剩 2 格宽
+ * 每个障碍记一组绕行点（chaseGates），怪物先走绕行点再追人。
+ *
+ * 行：0~4 是走廊上方（大部分是空的，只有绕行的教室），5 是走廊的上墙，6~10 走廊，11 下墙。
+ */
 function buildLongCorridor(): RoomDef {
-  const W = 300;
-  const top = [...'#'.repeat(W)];
-  for (let x = 14; x < W - 4; x += 9) top[x] = 'c';
-  top[6] = '1'; // 从三楼教室出来的门
-  const bottom = [...'#'.repeat(W)];
-  bottom[3] = 'B'; // 对面那扇门
-  bottom[4] = 'B';
-  const floor = '#' + '.'.repeat(W - 1);
+  const W = 240;
+  const H = 12;
+  const TOP = 5; // 走廊上墙
+  const BOT = 11; // 走廊下墙
+  const g: string[][] = Array.from({ length: H }, () => Array(W).fill(' '));
+  const set = (x: number, y: number, ch: string) => (g[y][x] = ch);
+  for (let x = 0; x < W; x++) {
+    set(x, TOP, '#');
+    set(x, BOT, '#');
+    for (let y = TOP + 1; y < BOT; y++) set(x, y, x === 0 || x === W - 1 ? '#' : '.');
+  }
+  const gates: ChaseGate[] = [];
+  const kinds = ['pile', 'locker', 'narrow', 'pile', 'locker'] as const;
+  const gateXs = [40, 78, 116, 154, 192];
+  const doorFree = new Set<number>(); // 上墙上不能放教室门的列（绕行教室的门洞附近）
+  kinds.forEach((kind, n) => {
+    const gx = gateXs[n];
+    if (kind === 'pile') {
+      // 桌椅堆：轮流挡上面 3 排 / 下面 3 排
+      const upper = n % 2 === 0;
+      const rows = upper ? [6, 7, 8] : [8, 9, 10];
+      const gap = upper ? 9.5 : 6.5; // 绕行点的行（换算成世界坐标时脚底再往下半格）
+      for (const y of rows) for (const x of [gx, gx + 1]) set(x, y, 'x');
+      gates.push({ startX: gx - 1, endX: gx + 3, wps: [{ x: gx - 1, y: gap }, { x: gx + 3, y: gap }] });
+    } else if (kind === 'narrow') {
+      // 窄口：上下各收进来，只剩中间 2 排
+      for (let x = gx; x < gx + 4; x++) for (const y of [6, 7, 10]) set(x, y, '#');
+      gates.push({ startX: gx - 1, endX: gx + 5, wps: [{ x: gx - 1, y: 8.5 }, { x: gx + 5, y: 8.5 }] });
+    } else {
+      // 倒下的柜子把走廊堵死；上方一间教室，两个门洞
+      for (const y of [6, 7, 8, 9, 10]) for (const x of [gx, gx + 1]) set(x, y, 'l');
+      const x0 = gx - 6;
+      const x1 = gx + 7;
+      for (let x = x0; x <= x1; x++) {
+        set(x, 0, '#');
+        for (let y = 1; y < TOP; y++) set(x, y, x === x0 || x === x1 ? '#' : '.');
+      }
+      // 教室里的课桌（留出中间一排走道）
+      for (let x = x0 + 2; x <= x1 - 2; x += 2) set(x, 2, 'd');
+      // 门洞：上墙开两格宽
+      for (const x of [gx - 4, gx - 3, gx + 4, gx + 5]) set(x, TOP, '.');
+      for (let x = x0 - 1; x <= x1 + 1; x++) doorFree.add(x);
+      gates.push({
+        startX: gx - 5,
+        endX: gx + 6,
+        wps: [{ x: gx - 3, y: 7 }, { x: gx - 3, y: 3.5 }, { x: gx + 5, y: 3.5 }, { x: gx + 5, y: 7 }],
+      });
+    }
+    for (let x = gx - 2; x <= gx + 5; x++) doorFree.add(x);
+  });
+  // 上墙上的教室门：每 9 格一扇，避开障碍和绕行教室
+  for (let x = 14; x < W - 4; x += 9) if (!doorFree.has(x)) set(x, TOP, 'c');
+  set(6, TOP, '1'); // 从三楼教室出来的门
+  set(3, BOT, 'B'); // 对面那扇门
+  set(4, BOT, 'B');
   return {
     id: 'corridor3_long',
     floor: 3,
-    map: [top.join(''), floor, floor, floor, bottom.join('')],
-    lights: lampRow(2.5, 4, W - 4, 6, 1),
+    map: g.map((r) => r.join('')),
+    lights: lampRow(TOP + 3.5, 4, W - 4, 6, 1),
     objects: {
       c: CLASS_DOOR,
       B: { id: 'burst_door', color: 0x3a2a24, label: '门', tex: 'class_door', wall: true },
+      x: CORRIDOR_STUFF.x,
+      l: CORRIDOR_STUFF.l,
+      d: DESK,
     },
     exits: {},
+    chaseGates: gates,
   };
 }
 
