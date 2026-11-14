@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, MOVE, TILE } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { hintLevel, hintRooms, MATERIALS, sanityTier } from '../core/progress';
-import { tLines, tStory, tUi } from '../core/text';
+import { tHas, tLines, tStory, tUi } from '../core/text';
 import type { MaterialDef } from '../core/types';
 import { makeFigure, PALETTE } from '../systems/figures';
 import { textStyle } from '../systems/style';
@@ -173,8 +173,15 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     GameState.addMaterial(m.id);
     const lines = intro ? (Array.isArray(intro) ? [...intro] : [intro]) : [];
     lines.push(tUi('obtained').replace('{name}', m.name));
+    lines.push(...this.materialComment(m.id));
     this.refreshHints();
     await this.say(lines);
+  }
+
+  /** 拿到材料时真冬的一句话（text: materials.<id>），没有就不说 */
+  protected materialComment(id: string): string[] {
+    const key = `materials.${id}`;
+    return tHas(key, GameState.save.cycle) ? this.text(key) : [];
   }
 
   // ------------------------------------------------------------ 房间

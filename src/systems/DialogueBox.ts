@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
+import { parseLine } from '../core/text';
 import { panel, textStyle } from './style';
 
 /**
@@ -9,6 +10,7 @@ export class DialogueBox {
   private readonly root: Phaser.GameObjects.Container;
   private readonly body: Phaser.GameObjects.Text;
   private readonly arrow: Phaser.GameObjects.Text;
+  private readonly name: Phaser.GameObjects.Text;
   private lines: string[] = [];
   private index = 0;
   private onDone?: () => void;
@@ -22,7 +24,9 @@ export class DialogueBox {
     this.body = scene.add.text(x + 32, y + 26, '', textStyle(24, undefined, { wordWrap: { width: w - 64, useAdvancedWrap: true }, lineSpacing: 8 }));
     this.arrow = scene.add.text(x + w - 36, y + h - 34, '▼', textStyle(16, '#7d7a74'));
     scene.tweens.add({ targets: this.arrow, alpha: 0.2, duration: 600, yoyo: true, repeat: -1 });
-    this.root = scene.add.container(0, 0, [panel(scene, x, y, w, h), this.body, this.arrow]);
+    // 说话人的名字，贴在对话框左上角
+    this.name = scene.add.text(x + 20, y - 14, '', textStyle(18, '#d9cfe8', { backgroundColor: '#14121a', padding: { x: 12, y: 4 } }));
+    this.root = scene.add.container(0, 0, [panel(scene, x, y, w, h), this.body, this.arrow, this.name]);
     this.root.setDepth(900).setVisible(false);
   }
 
@@ -57,6 +61,8 @@ export class DialogueBox {
   }
 
   private render(): void {
-    this.body.setText(this.lines[this.index] ?? '');
+    const { speaker, text } = parseLine(this.lines[this.index] ?? '');
+    this.name.setText(speaker ?? '').setVisible(!!speaker);
+    this.body.setText(text);
   }
 }

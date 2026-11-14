@@ -55,3 +55,17 @@ export function cycleCountLabel(n: number): string {
   const num = n < numerals.length ? numerals[n] : String(n);
   return tUi('cycleCountFormat').replace('{n}', num);
 }
+
+/**
+ * 台词行的说话人标记：「@真冬 ……大家呢。」→ { speaker: '真冬', text: '……大家呢。' }。
+ * 没有标记的是旁白。
+ */
+export function parseLine(line: string): { speaker?: string; text: string } {
+  const m = /^@(\S+)\s+([\s\S]*)$/.exec(line);
+  return m ? { speaker: m[1], text: m[2] } : { text: line };
+}
+
+/** 某个剧情键是否存在（不打印缺失警告） */
+export function tHas(key: string, cycle: CycleId): boolean {
+  return dig(TEXT[overrideRoot(cycle)], key) !== undefined || dig(TEXT.common, key) !== undefined;
+}

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
-import { tUi } from '../core/text';
+import { parseLine, tUi } from '../core/text';
 import { COLORS, textStyle } from '../systems/style';
 
 export interface StoryData {
@@ -21,6 +21,7 @@ export class StoryScene extends Phaser.Scene {
   private index = -1;
   private body!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
+  private speaker!: Phaser.GameObjects.Text;
   private ready = false;
   private finished = false;
 
@@ -43,6 +44,7 @@ export class StoryScene extends Phaser.Scene {
     this.body = this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', textStyle(28, COLORS.text, { align: 'center', wordWrap: { width: 900, useAdvancedWrap: true }, lineSpacing: 10 }))
       .setOrigin(0.5);
+    this.speaker = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50, '', textStyle(16, '#8a8296')).setOrigin(0.5);
     this.hint = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 60, tUi('pressToContinue'), textStyle(14, '#4a4844')).setOrigin(0.5).setAlpha(0);
 
     const kb = this.input.keyboard!;
@@ -81,8 +83,10 @@ export class StoryScene extends Phaser.Scene {
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.data_.onDone(this));
       return;
     }
-    this.body.setText(this.data_.lines[this.index]).setAlpha(0);
-    this.tweens.add({ targets: this.body, alpha: 1, duration: 400 });
+    const { speaker, text } = parseLine(this.data_.lines[this.index]);
+    this.body.setText(text).setAlpha(0);
+    this.speaker.setText(speaker ?? '').setAlpha(0);
+    this.tweens.add({ targets: [this.body, this.speaker], alpha: 1, duration: 400 });
     this.hint.setAlpha(0);
     this.tweens.add({ targets: this.hint, alpha: 1, delay: 1200, duration: 600 });
   }

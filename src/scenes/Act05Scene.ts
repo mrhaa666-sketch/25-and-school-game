@@ -129,7 +129,7 @@ export class Act05Scene extends RoomScene {
 
     if (result.kind === 'answer') {
       GameState.deductSanity(SANITY_COST.examAnswer, 'exam');
-      return this.finishExam();
+      return this.finishExam('answer');
     }
     if (result.kind === 'blank') {
       GameState.patch({ blankPaperThisCycle: true });
@@ -137,16 +137,16 @@ export class Act05Scene extends RoomScene {
       const m = getMaterial(BLANK_PAPER);
       if (GameState.save.cycle === 1 && m && !GameState.hasMaterial(m.id)) {
         GameState.addMaterial(m.id);
-        await this.say([this.textOne('act05.blank_material'), tUi('obtained').replace('{name}', m.name)]);
+        await this.say([this.textOne('act05.blank_material'), tUi('obtained').replace('{name}', m.name), ...this.materialComment(m.id)]);
       }
-      return this.finishExam();
+      return this.finishExam('blank');
     }
     await this.ending5();
   }
 
-  private async finishExam(): Promise<void> {
+  private async finishExam(kind: 'answer' | 'blank'): Promise<void> {
     this.submitted = true;
-    await this.say(this.t('submitted'));
+    await this.say([...this.t('submitted'), ...this.t(`submitted_${kind}`)]);
     this.cameras.main.shake(120, 0.003);
     await this.say(this.t('door_open'));
     this.locked = false;
