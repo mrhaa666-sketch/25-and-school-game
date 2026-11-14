@@ -43,8 +43,8 @@ export class FinalRunScene extends RoomScene {
     this.flashed = new Set();
     this.pinkGoneSaid = false;
     this.allowRun = false; // 慢一点
-    // 月光：整体压暗、偏冷
-    this.moon = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x0a1430, 0.42).setOrigin(0).setScrollFactor(0).setDepth(440);
+    // 天快亮了：整体蒙一层很淡的暖色晨光（N9：终周目不再压暗）
+    this.moon = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0xf2e6d0, 0.06).setOrigin(0).setScrollFactor(0).setDepth(440);
     this.loadRoom('infirmary');
     this.locked = true;
     this.cameras.main.fadeIn(2400, 0, 0, 0);

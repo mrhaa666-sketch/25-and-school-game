@@ -31,6 +31,17 @@ const FACADE_ROWS = 3;
 /** 嵌在后墙上的门洞 / 门的高度：约 2.4 格 */
 const DOOR_H = Math.round(TILE * 2.4);
 const DOOR_W = Math.round(TILE * 1.5);
+/** 贴图的基础色调：前四个周目压暗；终周目明显更亮（N9） */
+const shade = (night: number, day: number) => (GameState.isFinal ? day : night);
+
+/** 终周目（N9）：倒下的柜子、堆起来的桌椅都不在了，走廊是整齐的 */
+function tidyForFinal(def: RoomDef): RoomDef {
+  const gone = Object.keys(def.objects).filter((k) => ['locker_fallen', 'desk_pile'].includes(def.objects[k].id));
+  if (!gone.length) return def;
+  const re = new RegExp(`[${gone.join('')}]`, 'g');
+  return { ...def, map: def.map.map((r) => r.replace(re, '.')) };
+}
+
 /** 窗外远景的视差系数 */
 const WINDOW_PARALLAX = 0.85;
 /** 前景层的视差系数 */
@@ -570,7 +581,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const key = d.tex.startsWith('decal:') ? tex('decal', d.tex.slice(6)) : tex('obj', d.tex);
       let o: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
       if (this.textures.exists(key)) {
-        const img = this.add.image(cx, cy, key).setAngle(d.angle ?? 0).setAlpha(d.alpha ?? 1).setTint(0xc8c8c8);
+        const img = this.add.image(cx, cy, key).setAngle(d.angle ?? 0).setAlpha(d.alpha ?? 1).setTint(shade(0xc8c8c8, 0xf0f0f0));
         img.setScale(w / img.width);
         o = img;
       } else o = this.drawDecorBlock(d, cx, cy, w);
@@ -665,7 +676,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       this.leakLights.push({ tex: 'light_door_leak', x: cx, y: floorY + TILE * 0.4, radius: w * 0.7, intensity: 0.55, squash: 0.5 });
     }
     if (key) {
-      const img = this.add.image(cx, floorY, key).setOrigin(0.5, 1).setDisplaySize(w, h).setTint(0xc8c8c8);
+      const img = this.add.image(cx, floorY, key).setOrigin(0.5, 1).setDisplaySize(w, h).setTint(shade(0xc8c8c8, 0xf0f0f0));
       this.roomLayer.add(img);
       return img;
     }
@@ -703,7 +714,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const angle = { down: 0, up: 180, left: 90, right: -90 }[dir];
     const key = tex('obj', 'exit_threshold');
     if (this.textures.exists(key)) {
-      const img = this.add.image(px + TILE / 2, py + TILE / 2, key).setDisplaySize(TILE * 1.5, TILE).setAngle(angle).setTint(0xc8c8c8);
+      const img = this.add.image(px + TILE / 2, py + TILE / 2, key).setDisplaySize(TILE * 1.5, TILE).setAngle(angle).setTint(shade(0xc8c8c8, 0xf0f0f0));
       this.roomLayer.add(img);
       return;
     }
@@ -907,6 +918,25 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     });
   }
 
+  /**
+   * 终周目没有黑暗层，窗光改成叠加上去的晨光（light_window_dawn），更亮、范围更大。
+   */
+  private addDawnLight(): void {
+    const key = this.textures.exists('light:light_window_dawn') ? 'light:light_window_dawn' : 'light-soft';
+    if (key === 'light-soft' && !this.textures.exists(key)) return;
+    for (const l of this.roomLights) {
+      if (l.tex !== 'light_window') continue;
+      const r = l.radius * 1.5;
+      const img = this.add
+        .image(l.x, l.y, key)
+        .setDisplaySize(r * 2, r * 2 * (l.squash ?? 1))
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(0xfff0d8)
+        .setAlpha(0.4);
+      this.roomLayer.add(img);
+    }
+  }
+
   private updateDarkness(): void {
     this.updateForeground();
     this.updateWindowViews();
@@ -1062,8 +1092,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   // ------------------------------------------------------------ 房间
 
   protected loadRoom(roomOrId: string | RoomDef, arriveAt?: string, at?: { x: number; y: number }): void {
-    const def = typeof roomOrId === 'string' ? ROOMS[roomOrId] : roomOrId;
+    let def = typeof roomOrId === 'string' ? ROOMS[roomOrId] : roomOrId;
     if (!def) throw new Error(`没有这个房间：${String(roomOrId)}`);
+    if (GameState.isFinal) def = tidyForFinal(def);
     this.room = def;
     this.roomLayer.removeAll(true);
 
@@ -1103,7 +1134,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const g = this.add.graphics();
     this.roomLayer.add(g);
     // 墙顶没有贴图时用的颜色：接近黑的深灰，靠地板一侧描一道边
-    const topColor = 0x1b1a1f;
+    const topColor = shade(0x1b1a1f, 0x45444a);
     const walkableAt = (x: number, y: number) => {
       const ch = def.map[y]?.[x] ?? ' ';
       return ch !== ' ' && ch !== '#' && !def.objects[ch]?.wall && !isBack.has(`${x},${y}`);
@@ -1191,8 +1222,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     if (texturedTop && !def.wallTex) {
       const src = this.textures.get(topKey).getSourceImage();
       const up = (FACADE_ROWS - 1) * TILE;
-      tiled(topKey, topMask, { ...roomArea, y: roomArea.y - up, h: roomArea.h + up }, TILE / src.width, TILE / src.height, 0x909090, -19);
-    } else if (texturedTop) tiled(topKey, topMask, roomArea, (TILE * 2) / 512, (TILE * 2) / 512, 0x707070, -19);
+      tiled(topKey, topMask, { ...roomArea, y: roomArea.y - up, h: roomArea.h + up }, TILE / src.width, TILE / src.height, shade(0x909090, 0xbcbcbc), -19);
+    } else if (texturedTop) tiled(topKey, topMask, roomArea, (TILE * 2) / 512, (TILE * 2) / 512, shade(0x707070, 0xa8a8a8), -19);
     else topMask.destroy();
     if (texturedFace && back.length) {
       // 每一排后墙一条：横向按 2 格一个周期平铺（和格子对齐），纵向正好 3 格不重复
@@ -1203,7 +1234,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         const top = this.originY + (y + 1 - FACADE_ROWS) * TILE;
         const rowMask = this.make.graphics({}, false);
         for (const c of back) if (c.y === y) rowMask.fillRect(this.originX + c.x * TILE, top, TILE, FACADE_ROWS * TILE);
-        tiled(faceKey, rowMask, { x: this.originX, y: top, w: worldW, h: FACADE_ROWS * TILE }, sx, sy, 0x808080, -18);
+        tiled(faceKey, rowMask, { x: this.originX, y: top, w: worldW, h: FACADE_ROWS * TILE }, sx, sy, shade(0x808080, 0xb8b8b8), -18);
       }
     }
     faceMask.destroy();
@@ -1245,7 +1276,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         const box = isBack.has(`${comp.x0},${comp.y1}`) ? this.onFacadeBox(obj, x, y + chh, cw) : { x: x + 4, y: y - TILE * 0.9, w: cw - 8, h: chh + TILE * 0.9 };
         const pimg = fitImage(this, tex('obj', `ena_portrait_0${n}`), box);
         if (pimg) {
-          pimg.setTint(0xc8c8c8);
+          pimg.setTint(shade(0xc8c8c8, 0xf0f0f0));
           this.roomLayer.add(pimg);
           const list = this.objectImages.get(comp.ch) ?? [];
           list.push(pimg);
@@ -1267,7 +1298,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
           )
         : null;
       if (img) {
-        img.setTint(0xc8c8c8);
+        img.setTint(shade(0xc8c8c8, 0xf0f0f0));
         // N2：后墙上的窗，玻璃后面是远景（画在窗的图下面，从透明的玻璃透出来）
         if (look === 'window_night' && isBack.has(`${comp.x0},${comp.y1}`)) this.addWindowView(img.getBounds(), def);
         if (deskFx === 'tilted') img.setAngle(9);
@@ -1314,6 +1345,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.addMaterialHints();
     this.addDoorLights();
     this.roomLights = [...this.buildRoomLights(def, isBack), ...this.leakLights];
+    if (GameState.isFinal) this.addDawnLight();
 
     this.frameRoom(worldW, totalH, this.originY - extra);
 
@@ -1407,7 +1439,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
 
   /** 地板的色调：基础灰度乘上周目的环境光颜色。终周目不加色调 */
   private floorTint(def: RoomDef): number {
-    if (def.floorTex || GameState.isFinal) return 0xb0b0b0;
+    if (GameState.isFinal) return 0xdcdcdc; // 终周目：不加周目色调，整体更亮
+    if (def.floorTex) return 0xb0b0b0;
     const c = Phaser.Display.Color.HexStringToColor(GameState.cycleDef.environment.lightTint);
     const k = 0xb0 / 255;
     return Phaser.Display.Color.GetColor(Math.round(c.red * k), Math.round(c.green * k), Math.round(c.blue * k));
