@@ -32,6 +32,21 @@ const FACADE_ROWS = 3;
 const DOOR_H = Math.round(TILE * 2.4);
 const DOOR_W = Math.round(TILE * 1.5);
 
+/** 门的种类：决定画多宽、没图时用什么颜色 */
+type DoorKind = 'class' | 'iron' | 'gate';
+const DOOR_KIND = (o: RoomObject): DoorKind | null => {
+  const s = `${o.id} ${o.tex ?? ''}`;
+  if (/class_door|burst_door|pink_door/.test(s)) return 'class';
+  if (/iron_door/.test(s)) return 'iron';
+  if (/school_gate/.test(s)) return 'gate';
+  return null;
+};
+const DOOR_SIZE: Record<DoorKind, { w: number; h: number }> = {
+  class: { w: DOOR_W, h: DOOR_H },
+  iron: { w: TILE * 2, h: DOOR_H },
+  gate: { w: TILE * 4, h: Math.round(TILE * 2.6) },
+};
+
 /** 会移动的东西（怪物、群体中的个体）。坐标是脚下中心 */
 export interface Actor {
   obj: Phaser.GameObjects.Container;
@@ -81,6 +96,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   /** 黑暗层（R4）和这个房间的固定光源 */
   protected darkness?: Darkness;
   private roomLights: (LightSource & { flicker?: boolean })[] = [];
+  private leakLights: LightSource[] = [];
   private doorGlows: { rect: Phaser.GameObjects.Rectangle; x: number; y: number }[] = [];
   /** 演出临时加的光（子类可以往里放，自己负责移除） */
   protected extraLights: LightSource[] = [];
@@ -356,6 +372,105 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     if (body) this.applyPlayerLook(body);
   }
 
+  // ------------------------------------------------------------ 门和出口
+
+  /** 新画的门是竖长图（512×768，大门 1024×768）；旧的 512×512 斜视角图不用，改画色块 */
+  private isNewArt(key: string): boolean {
+    if (!this.textures.exists(key)) return false;
+    const src = this.textures.get(key).getSourceImage();
+    return src.width !== src.height;
+  }
+
+  /** 这扇门通往的房间里还有没拿到的材料（当前周目） */
+  private roomHasMaterials(roomId: string | undefined): boolean {
+    const s = GameState.save;
+    if (!roomId || s.cycle === 'final') return false;
+    return MATERIALS.some((m) => m.theme === s.cycle && m.room === roomId && !s.materials.includes(m.id));
+  }
+
+  /**
+   * 后墙上的一扇门：水平居中于 cx，底边对齐地面线 floorY。
+   * 只是画得比出口格宽，判定和碰撞仍是原来的格子。
+   * 外观：关着 / 门缝漏光（通往还有材料的房间）/ 半开（open）。
+   */
+  protected drawDoor(obj: RoomObject, cx: number, floorY: number, dest?: string, minW = 0, open = false): Phaser.GameObjects.Image | null {
+    const kind = DOOR_KIND(obj) ?? 'class';
+    const size = DOOR_SIZE[kind];
+    const w = Math.max(size.w, minW);
+    const h = size.h;
+    const x = cx - w / 2;
+    const y = floorY - h;
+    const pink = this.cycleLook(obj) === 'pink_door';
+    const leak = !open && kind === 'class' && !pink && this.roomHasMaterials(dest);
+    const base = kind === 'iron' ? 'iron_door' : kind === 'gate' ? 'school_gate' : pink ? 'pink_door' : 'class_door';
+    const variant = open ? `${base}_open` : leak ? `${base}_leak` : base;
+    const key = [variant, base].map((n) => tex('obj', n)).find((k) => this.isNewArt(k));
+    if (leak) {
+      // 门缝漏出的光，照在门下的地面上
+      this.leakLights.push({ tex: 'light_door_leak', x: cx, y: floorY + TILE * 0.4, radius: w * 0.7, intensity: 0.55, squash: 0.5 });
+    }
+    if (key) {
+      const img = this.add.image(cx, floorY, key).setOrigin(0.5, 1).setDisplaySize(w, h).setTint(0xc8c8c8);
+      this.roomLayer.add(img);
+      return img;
+    }
+    // 没有新图：色块门（门框、门板、门上的小窗、把手）
+    const g = this.add.graphics();
+    this.roomLayer.add(g);
+    const panel = kind === 'iron' ? 0x34373a : kind === 'gate' ? 0x2a2c2e : pink ? 0x7a4458 : 0x43362a;
+    g.fillStyle(0x15130f, 1).fillRect(x - 3, y - 3, w + 6, h + 3);
+    if (open) {
+      g.fillStyle(0x050505, 1).fillRect(x, y, w, h);
+      g.fillStyle(panel, 1).fillRect(x, y, w * 0.45, h);
+    } else g.fillStyle(panel, 1).fillRect(x, y, w, h);
+    if (kind === 'gate') {
+      g.lineStyle(2, 0x151617, 1);
+      for (let bx = x + 8; bx < x + w - 4; bx += 10) g.lineBetween(bx, y + 4, bx, y + h);
+      g.lineBetween(x, y + h * 0.3, x + w, y + h * 0.3);
+    } else if (kind === 'iron') {
+      g.lineStyle(2, 0x22252a, 1).strokeRect(x + 5, y + 6, w - 10, h - 12);
+      g.lineBetween(cx, y + 6, cx, y + h - 6);
+    } else if (!open) {
+      g.fillStyle(0x0e1216, 1).fillRect(x + w * 0.22, y + h * 0.12, w * 0.56, h * 0.24);
+      g.fillStyle(0x8a8070, 1).fillRect(x + w - 10, y + h * 0.55, 5, 3);
+    }
+    if (leak) {
+      g.fillStyle(0xe8d8a0, 0.85).fillRect(x + 2, floorY - 2, w - 4, 2);
+      g.fillStyle(0xe8d8a0, 0.5).fillRect(x + w - 2, y + 4, 2, h - 6);
+    }
+    return null;
+  }
+
+  /** 下边 / 侧边的出口：门槛。贴图按朝下的出口来画，其余方向旋转 */
+  private drawThreshold(def: RoomDef, tx: number, ty: number, px: number, py: number): void {
+    const out = (x: number, y: number) => (def.map[y]?.[x] ?? ' ') === ' ';
+    const dir = out(tx, ty + 1) ? 'down' : out(tx, ty - 1) ? 'up' : out(tx - 1, ty) ? 'left' : 'right';
+    const angle = { down: 0, up: 180, left: 90, right: -90 }[dir];
+    const key = tex('obj', 'exit_threshold');
+    if (this.textures.exists(key)) {
+      const img = this.add.image(px + TILE / 2, py + TILE / 2, key).setDisplaySize(TILE * 1.5, TILE).setAngle(angle).setTint(0xc8c8c8);
+      this.roomLayer.add(img);
+      return;
+    }
+    // 色块门槛：格子本身是暗的，靠房间里那一侧一道浅色的边，两边是门框
+    const g = this.add.graphics();
+    this.roomLayer.add(g);
+    g.fillStyle(0x0b0a0d, 1).fillRect(px, py, TILE, TILE);
+    g.fillStyle(0x4a463f, 1);
+    if (dir === 'down') g.fillRect(px - 6, py, TILE + 12, 4);
+    if (dir === 'up') g.fillRect(px - 6, py + TILE - 4, TILE + 12, 4);
+    if (dir === 'left') g.fillRect(px + TILE - 4, py - 6, 4, TILE + 12);
+    if (dir === 'right') g.fillRect(px, py - 6, 4, TILE + 12);
+    g.fillStyle(0x2a2622, 1);
+    if (dir === 'down' || dir === 'up') {
+      g.fillRect(px - 6, py, 6, TILE);
+      g.fillRect(px + TILE, py, 6, TILE);
+    } else {
+      g.fillRect(px, py - 6, TILE, 6);
+      g.fillRect(px, py + TILE, TILE, 6);
+    }
+  }
+
   // ------------------------------------------------------------ 黑暗和光
 
   /** 房间数据里的光源，加上窗户自动生成的窗光 */
@@ -583,6 +698,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     };
 
     const letters = new Set<string>();
+    const exitCells: { ch: string; x: number; y: number; back: boolean }[] = [];
+    this.leakLights = [];
     def.map.forEach((row, y) => {
       [...row].forEach((ch, x) => {
         if (ch === ' ') return;
@@ -612,12 +729,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
           }
         }
         if (/[0-9]/.test(ch)) {
-          if (backWall) {
-            // 后墙上的出口：先画一个门洞（R5 换成门的图）
-            // 画得比出口格宽（约 1.5 格），出口的判定仍然是这一格
-            g.fillStyle(0x000000, 0.8).fillRect(px + TILE / 2 - DOOR_W / 2, py + TILE - DOOR_H, DOOR_W, DOOR_H);
-            g.lineStyle(2, 0x2a2622, 1).strokeRect(px + TILE / 2 - DOOR_W / 2, py + TILE - DOOR_H, DOOR_W, DOOR_H);
-          } else g.fillStyle(0x000000, 0.55).fillRect(px + 4, py + 4, TILE - 8, TILE - 8);
+          exitCells.push({ ch, x, y, back: backWall });
           return;
         }
         if (def.objects[ch]) letters.add(ch);
@@ -677,6 +789,15 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const y = this.originY + comp.y0 * TILE;
       const cw = (comp.x1 - comp.x0 + 1) * TILE;
       const chh = (comp.y1 - comp.y0 + 1) * TILE;
+      if (obj.wall && isBack.has(`${comp.x0},${comp.y1}`) && DOOR_KIND(obj)) {
+        const img = this.drawDoor(obj, x + cw / 2, y + chh, def.doors?.[comp.ch], cw);
+        if (img) {
+          const list = this.objectImages.get(comp.ch) ?? [];
+          list.push(img);
+          this.objectImages.set(comp.ch, list);
+        }
+        continue;
+      }
       const look = this.cycleLook(obj);
       const img = look === 'portrait'
         ? cropImage(this, tex('tile', 'wall_school_ena'), PORTRAIT_CROP, { x: x + 4, y: y - TILE * 0.9, w: cw - 8, h: chh + TILE * 0.9 })
@@ -715,9 +836,17 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       }
     }
 
+    // 出口：后墙上的画成完整的门，下边和侧边的画成门槛
+    for (const e of exitCells) {
+      const px = this.originX + e.x * TILE;
+      const py = this.originY + e.y * TILE;
+      if (e.back) this.drawDoor({ id: 'class_door', color: 0, tex: 'class_door' }, px + TILE / 2, py + TILE, def.doors?.[e.ch]);
+      else this.drawThreshold(def, e.x, e.y, px, py);
+    }
+
     this.addMaterialHints();
     this.addDoorLights();
-    this.roomLights = this.buildRoomLights(def, isBack);
+    this.roomLights = [...this.buildRoomLights(def, isBack), ...this.leakLights];
 
     this.frameRoom(worldW, totalH, this.originY - extra);
 

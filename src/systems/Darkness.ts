@@ -152,8 +152,7 @@ export class Darkness {
     if (sig === this.sig) return;
     this.sig = sig;
 
-    // 渲染纹理用世界尺寸；放大镜头时它跟着放大，正好盖住视野
-    if (this.rt.width !== w || this.rt.height !== h) this.rt.resize(w, h);
+    // 渲染纹理是世界尺寸、按 1 倍镜头的视野分配：镜头放大时视野更小，照样盖得住
     this.rt.setPosition(ox, oy);
     this.rt.clear();
     const dark = pl.dark + (1 - pl.dark) * beat * 0.6;
