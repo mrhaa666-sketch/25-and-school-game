@@ -31,6 +31,8 @@ const FACADE_ROWS = 3;
 /** 嵌在后墙上的门洞 / 门的高度：约 2.4 格 */
 const DOOR_H = Math.round(TILE * 2.4);
 const DOOR_W = Math.round(TILE * 1.5);
+/** 前景层的视差系数 */
+const FG_PARALLAX = 1.15;
 
 /** 房间里的一盏固定光源，带上运行时的状态（闪烁相位、日光灯的灯管、追逐时熄灭） */
 type RoomLightState = LightSource & {
@@ -110,6 +112,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private doorGlows: { rect: Phaser.GameObjects.Rectangle; x: number; y: number }[] = [];
   /** 演出临时加的光（子类可以往里放，自己负责移除） */
   protected extraLights: LightSource[] = [];
+  /** 前景层（N4）：画在角色上方、带视差的东西；fade 是被角色挡住时的淡出系数 */
+  private foreground: { obj: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics; base: number; w: number; h: number; fade: number; lamp?: boolean }[] = [];
   /** 场上的怪物（N7：在黑暗里保留一个看得见的轮廓） */
   private actors = new Set<Actor>();
   /** 按脚底 y 排序的东西（物件、玩家、怪物、成员演出图）。y 就是脚底 */
@@ -185,6 +189,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.doorGlows = [];
     this.extraLights = [];
     this.actors = new Set();
+    this.foreground = [];
     this.beatShade.setVisible(false); // 节拍改为调制黑暗层的亮度
     this.registry.set('roomLit', !GameState.isFinal);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -397,21 +402,29 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const cy = this.originY + d.y * TILE;
       const w = (d.scale ?? 1) * TILE;
       const key = d.tex.startsWith('decal:') ? tex('decal', d.tex.slice(6)) : tex('obj', d.tex);
+      let o: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
       if (this.textures.exists(key)) {
         const img = this.add.image(cx, cy, key).setAngle(d.angle ?? 0).setAlpha(d.alpha ?? 1).setTint(0xc8c8c8);
         img.setScale(w / img.width);
-        this.roomLayer.add(img);
-      } else this.drawDecorBlock(d, cx, cy, w);
+        o = img;
+      } else o = this.drawDecorBlock(d, cx, cy, w);
+      if (d.fg) {
+        this.roomExtras.push(o);
+        this.addForeground(o, d.alpha ?? 0.6, w, w * 2);
+      } else this.roomLayer.add(o);
     }
   }
 
   /** 装饰的色块占位：按名字大致画个形状 */
-  private drawDecorBlock(d: RoomDecor, cx: number, cy: number, w: number): void {
+  private drawDecorBlock(d: RoomDecor, cx: number, cy: number, w: number): Phaser.GameObjects.Graphics {
     const g = this.add.graphics({ x: cx, y: cy });
     g.setAngle(d.angle ?? 0).setAlpha(d.alpha ?? 1);
-    this.roomLayer.add(g);
     const name = d.tex.replace(/^decal:/, '');
-    if (/ribbon/.test(name)) {
+    if (/rope/.test(name)) {
+      // 垂下的绳子：从画面上方一直垂到这里，末端一个绳圈
+      g.lineStyle(3, 0x8a7e66, 1).lineBetween(0, -TILE * 6, 0, 0);
+      g.strokeCircle(0, w * 0.35, w * 0.35);
+    } else if (/ribbon/.test(name)) {
       // 缎带：一个蝴蝶结加两条带子
       const r = w / 2;
       g.fillStyle(0xc87a9a, 0.9);
@@ -428,6 +441,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     } else {
       g.fillStyle(0x3a3530, 0.8).fillRect(-w / 2, -w / 2, w, w);
     }
+    return g;
   }
 
   /** 绘名周目画像的色块占位：画框、深色画布、一张没画完的脸。6 种略有不同 */
@@ -606,8 +620,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       g.fillStyle(off ? 0x46464c : 0xe6ebee, 1).fillRect(-TILE * 0.72, -2, TILE * 1.44, 4);
       fixture = g;
     }
-    fixture.setDepth(106);
     this.roomExtras.push(fixture);
+    this.addForeground(fixture, 0.7, TILE * 1.6, TILE * 0.5, true);
     return {
       tex: 'light_lamp',
       x,
@@ -645,7 +659,41 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     }
   }
 
+  // ------------------------------------------------------------ 前景层（N4）
+
+  /**
+   * 前景物：视差系数 1.15（比场景移动得快一点），透明度 0.5～0.7。
+   * 灯管画在黑暗层上面（自己会亮），其余画在黑暗层下面。
+   * 位置预先补偿视差，让镜头对准它时它正好在原位。
+   */
+  private addForeground(obj: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics, base: number, w: number, h: number, lamp = false): void {
+    const k = FG_PARALLAX - 1;
+    obj.setScrollFactor(FG_PARALLAX);
+    obj.setPosition(obj.x + k * (obj.x - GAME_WIDTH / 2), obj.y + k * (obj.y - GAME_HEIGHT / 2));
+    obj.setDepth(lamp ? 106 : 104).setAlpha(base);
+    this.foreground.push({ obj, base: Math.min(0.7, Math.max(0.5, base)), w, h, fade: 1, lamp });
+  }
+
+  /** 玩家或怪物走到前景物下面时，前景物淡出到 0.2 以下，保证看得清角色 */
+  private updateForeground(): void {
+    if (!this.foreground.length) return;
+    const cam = this.cameras.main;
+    const k = FG_PARALLAX - 1;
+    const bodies = [this.player, ...[...this.actors].map((a) => a.obj)].filter((o) => o.active && o.visible).map((o) => o.getBounds());
+    for (const f of this.foreground) {
+      // 前景物看起来在世界里的位置（扣掉视差）
+      const ax = f.obj.x - k * cam.scrollX;
+      const ay = f.obj.y - k * cam.scrollY;
+      const rect = new Phaser.Geom.Rectangle(ax - f.w / 2 - 6, ay - f.h / 2 - 6, f.w + 12, f.h + 12);
+      const covered = bodies.some((b) => Phaser.Geom.Intersects.RectangleToRectangle(rect, b));
+      const target = covered ? 0.25 : 1;
+      f.fade += (target - f.fade) * 0.15;
+      if (!f.lamp) f.obj.setAlpha(f.base * f.fade);
+    }
+  }
+
   private updateDarkness(): void {
+    this.updateForeground();
     if (!this.darkness) return;
     this.darkness.beat = this.beatShade ? this.beatShade.alpha / 0.22 : 0;
     const t = this.time.now;
@@ -656,7 +704,11 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const ph = l.phase ?? 0;
       const k = l.flicker && Math.sin(t * 0.013 + ph) + Math.sin(t * 0.0071 + ph * 2.3) > 1.55 ? 0.15 : 1;
       const lit = l.intensity * k;
-      if (l.fixture) l.fixture.setAlpha(l.broken ? 1 : 0.35 + 0.65 * (lit / 0.7) * (1 - this.darkness.beat * 0.6));
+      if (l.fixture) {
+        const fg = this.foreground.find((f) => f.obj === l.fixture);
+        const glow = l.broken ? 0.5 : 0.3 + 0.4 * (lit / 0.7) * (1 - this.darkness.beat * 0.6);
+        l.fixture.setAlpha(glow * (fg?.fade ?? 1));
+      }
       if (lit > 0) lights.push({ tex: l.tex, x: l.x, y: l.y, radius: l.radius, intensity: lit, squash: l.squash });
     }
     for (const d of this.doorGlows) {
@@ -814,6 +866,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const wall = Phaser.Display.Color.HexStringToColor(def.wallColor ?? env.wallColor).color;
     this.roomExtras.forEach((o) => o.destroy());
     this.roomExtras = [];
+    this.foreground = [];
     this.objectImages = new Map();
     const floorKey = this.floorTexFor(def);
     const texturedFloor = this.textures.exists(floorKey);

@@ -41,7 +41,7 @@ const GROUPS: Record<string, { dir: string; names: string[] }> = {
     'fire_box', 'bulletin_board', 'class_sign', 'sink_row', 'broom_locker', 'locker_fallen', 'desk_pile',
     'curtain_bed', 'iv_stand', 'plaster_shelf', 'paint_sink', 'music_stand', 'metronome', 'trophy_case', 'shoes_pair',
     'mafuyu_award_wall', 'ena_portrait_01', 'ena_portrait_02', 'ena_portrait_03', 'ena_portrait_04', 'ena_portrait_05', 'ena_portrait_06',
-    'ena_canvas_pile', 'mizuki_ribbon_01', 'mizuki_ribbon_02', 'mizuki_ribbon_03', 'mizuki_ribbon_04', 'mizuki_mannequin', 'kanade_cup_stack'] },
+    'ena_canvas_pile', 'mizuki_ribbon_01', 'mizuki_ribbon_02', 'mizuki_ribbon_03', 'mizuki_ribbon_04', 'mizuki_mannequin', 'kanade_cup_stack', 'rope_hanging'] },
   decal: { dir: 'sprites/decals/', names: ['decal_stain_01', 'decal_stain_02', 'decal_stain_03', 'decal_stain_04', 'decal_paper_01', 'decal_paper_02', 'decal_paper_03', 'decal_crack_01', 'decal_crack_02', 'decal_footprint_01', 'decal_glass_01', 'decal_chalk_01', 'decal_test_01', 'decal_test_02', 'decal_score_01', 'decal_score_02', 'decal_score_03', 'decal_score_04'] },
   backdrop: { dir: 'sprites/backdrop/', names: ['night_view', 'dawn_view'] },
   mon: { dir: 'sprites/monsters/', names: ['faceless', 'flying_score', 'moving_door', 'moving_door_folded', 'note', 'nurse', 'piano', 'piano_strings', 'plaster', 'turned_back', 'mafuyus_child', 'mafuyus_middle', 'mafuyus_high', 'mafuyus_doctor'] },

@@ -71,6 +71,8 @@ export interface RoomDecor {
   cycle?: (1 | 2 | 3 | 4 | 'final')[];
   /** 贴在墙上（立面上） */
   wall?: boolean;
+  /** 前景层（N4）：画在角色上方，带视差，角色走到下面时淡出 */
+  fg?: boolean;
 }
 
 export interface RoomDef {
@@ -219,7 +221,7 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'corridor4',
     floor: 4,
     doors: { '1': 'infirmary', '2': 'classroom4', '3': 'art_prep4', '4': 'locked_class4', '5': 'music_prep4' },
-    lights: lampRow(2.5, 3, 28, 5, 0),
+    lights: lampRow(2.5, 3, 27, 6, 0),
     map: [
       '##2#W##3###1##4#W###5###W#####SS',
       '#.............................SS',
@@ -238,6 +240,9 @@ export const ROOMS: Record<string, RoomDef> = {
       { tex: 'mizuki_ribbon_03', x: 18.3, y: -0.4, scale: 0.8, wall: true, cycle: [3] },
       { tex: 'mizuki_ribbon_04', x: 22.6, y: 3.3, scale: 0.7, angle: -35, cycle: [3] },
       { tex: 'mizuki_ribbon_02', x: 27.4, y: 1.8, scale: 0.6, angle: 70, cycle: [3] },
+      // 前景：从天花板垂下来的一根绳子；瑞希周目多一条垂下的缎带
+      { tex: 'rope_hanging', x: 11.5, y: 1.2, scale: 0.5, fg: true, cycle: [1, 2, 3, 4] },
+      { tex: 'mizuki_ribbon_01', x: 17.5, y: 0.8, scale: 0.7, angle: 90, fg: true, cycle: [3] },
     ],
     // 3/4/5 是只在对应周目能进的房间，由第二幕的场景判断能不能进
     exits: {
@@ -429,6 +434,8 @@ export const ROOMS: Record<string, RoomDef> = {
       { tex: 'mizuki_ribbon_04', x: 15.2, y: -0.6, scale: 0.8, wall: true, cycle: [3] },
       { tex: 'mizuki_ribbon_02', x: 21.5, y: 3.2, scale: 0.7, angle: 40, cycle: [3] },
       { tex: 'mizuki_ribbon_03', x: 25.8, y: 1.5, scale: 0.6, angle: -60, cycle: [3] },
+      { tex: 'rope_hanging', x: 16.5, y: 1.2, scale: 0.5, fg: true, cycle: [1, 2, 3, 4] },
+      { tex: 'mizuki_ribbon_04', x: 9.5, y: 0.8, scale: 0.7, angle: 90, fg: true, cycle: [3] },
     ],
     lights: lampRow(2.5, 3, 29, 6, 2),
     map: [
