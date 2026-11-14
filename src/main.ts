@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from './core/constants';
+import { EdgeBlurPipeline } from './systems/EdgeBlurPipeline';
 import { Act01Scene } from './scenes/Act01Scene';
 import { Act02Scene } from './scenes/Act02Scene';
 import { Act03Scene } from './scenes/Act03Scene';
@@ -23,6 +24,7 @@ const game = new Phaser.Game({
   height: GAME_HEIGHT,
   backgroundColor: '#000000',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  pipeline: { [EdgeBlurPipeline.KEY]: EdgeBlurPipeline } as unknown as Phaser.Types.Core.PipelineConfig,
   scene: [
     BootScene,
     TitleScene,

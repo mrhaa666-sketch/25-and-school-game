@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { GameState } from '../core/GameState';
+import { EdgeBlurPipeline } from './EdgeBlurPipeline';
 import { sanityTier, type SanityTier } from '../core/progress';
 
 /**
@@ -104,18 +105,34 @@ export class VisualFilter {
  * 作用在游戏场景镜头上的效果：档位 3 去饱和，档位 4 更强的去饱和 + 周期性抖动。
  * 返回一个 update 函数，由场景每帧调用。
  */
+/** 档位 → 视野边缘模糊：最外圈的模糊半径（像素）与开始模糊的位置（0 中央 ~ 1 角落） */
+const EDGE_BLUR: Record<SanityTier, { strength: number; inner: number }> = {
+  1: { strength: 0, inner: 1 },
+  2: { strength: 2.2, inner: 0.55 },
+  3: { strength: 3.6, inner: 0.4 },
+  4: { strength: 5.5, inner: 0.25 },
+};
+
 export function createCameraFx(camera: Phaser.Cameras.Scene2D.Camera): (time: number) => void {
   const matrix = camera.postFX?.addColorMatrix();
+  // 视野边缘模糊（只有 WebGL 才有）
+  let blur: EdgeBlurPipeline | undefined;
+  if (camera.scene.game.renderer.type === Phaser.WEBGL) {
+    camera.setPostPipeline(EdgeBlurPipeline);
+    blur = camera.getPostPipeline(EdgeBlurPipeline) as EdgeBlurPipeline;
+  }
   let tier: SanityTier | 0 = 0;
   let nextShake = 0;
   return (time: number) => {
     if (GameState.isFinal) {
       matrix?.reset();
+      if (blur) blur.strength = 0;
       return;
     }
     const t = sanityTier(GameState.save.sanity);
     if (t !== tier) {
       tier = t;
+      if (blur) Object.assign(blur, EDGE_BLUR[t]);
       if (matrix) {
         matrix.reset();
         if (t === 2) matrix.brightness(0.9, true);
