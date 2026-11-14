@@ -34,11 +34,21 @@ export const SPRITE_FILES: Record<string, string> = {
 
 /** 场景类素材：key 就是文件名（不带扩展名），前缀区分类别 */
 const GROUPS: Record<string, { dir: string; names: string[] }> = {
-  obj: { dir: 'sprites/objects/', names: ['bed', 'blackboard', 'chair', 'class_door', 'easel_portraits', 'grand_piano', 'iron_door', 'lectern', 'locker', 'medicine_cabinet', 'medicine_cabinet_open', 'mirror', 'office_desk', 'pink_door', 'pipe_entrance', 'ropes', 'school_desk', 'school_desk_paper', 'school_desk_paper_filled', 'school_gate', 'scissors', 'shoe_locker', 'stairs', 'trash_can', 'wall_clock', 'window_night'] },
+  obj: { dir: 'sprites/objects/', names: ['bed', 'blackboard', 'chair', 'class_door', 'easel_portraits', 'grand_piano', 'iron_door', 'lectern', 'locker', 'medicine_cabinet', 'medicine_cabinet_open', 'mirror', 'office_desk', 'pink_door', 'pipe_entrance', 'ropes', 'school_desk', 'school_desk_paper', 'school_desk_paper_filled', 'school_gate', 'scissors', 'shoe_locker', 'stairs', 'trash_can', 'wall_clock', 'window_night',
+    // 新素材（美术文档）：门的变体、走廊和房间的物件、周目主题装饰
+    'class_door_open', 'class_door_leak', 'exit_threshold', 'lamp_tube',
+    'school_desk_tilted', 'school_desk_fallen', 'school_desk_carved',
+    'fire_box', 'bulletin_board', 'class_sign', 'sink_row', 'broom_locker', 'locker_fallen', 'desk_pile',
+    'curtain_bed', 'iv_stand', 'plaster_shelf', 'paint_sink', 'music_stand', 'metronome', 'trophy_case', 'shoes_pair',
+    'mafuyu_award_wall', 'ena_portrait_01', 'ena_portrait_02', 'ena_portrait_03', 'ena_portrait_04', 'ena_portrait_05', 'ena_portrait_06',
+    'ena_canvas_pile', 'mizuki_ribbon_01', 'mizuki_ribbon_02', 'mizuki_ribbon_03', 'mizuki_ribbon_04', 'mizuki_mannequin', 'kanade_cup_stack'] },
+  decal: { dir: 'sprites/decals/', names: ['decal_stain_01', 'decal_stain_02', 'decal_stain_03', 'decal_stain_04', 'decal_paper_01', 'decal_paper_02', 'decal_paper_03', 'decal_crack_01', 'decal_crack_02', 'decal_footprint_01', 'decal_glass_01', 'decal_chalk_01', 'decal_test_01', 'decal_test_02', 'decal_score_01', 'decal_score_02', 'decal_score_03', 'decal_score_04'] },
+  backdrop: { dir: 'sprites/backdrop/', names: ['night_view', 'dawn_view'] },
   mon: { dir: 'sprites/monsters/', names: ['faceless', 'flying_score', 'moving_door', 'moving_door_folded', 'note', 'nurse', 'piano', 'piano_strings', 'plaster', 'turned_back', 'mafuyus_child', 'mafuyus_middle', 'mafuyus_high', 'mafuyus_doctor'] },
   scn: { dir: 'sprites/scenes/', names: ['floor2_clothes', 'floor2_lying', 'floor3_canvas', 'floor3_canvas_cut', 'floor3_hanged', 'music_kanade_blank', 'music_kanade_play', 'music_kanade_shatter'] },
-  tile: { dir: 'tiles/', names: ['floor_final', 'floor_pink_room', 'floor_pipe', 'floor_school', 'floor_school_ena', 'floor_school_kanade', 'floor_school_mizuki', 'wall_school', 'wall_school_ena', 'wall_school_mizuki'] },
-  bg: { dir: 'ui/bg/', names: ['climb_facade', 'ending10_lot', 'ending9_home', 'exam_closeup', 'final_gate', 'title'] },
+  tile: { dir: 'tiles/', names: ['floor_final', 'floor_pink_room', 'floor_pipe', 'floor_school', 'floor_school_ena', 'floor_school_kanade', 'floor_school_mizuki', 'wall_school', 'wall_school_ena', 'wall_school_mizuki',
+    'wall_face_school', 'wall_face_ena', 'wall_face_mizuki', 'wall_face_kanade', 'wall_top', 'floor_f3', 'floor_f2', 'floor_f1'] },
+  bg: { dir: 'ui/bg/', names: ['climb_facade', 'ending10_lot', 'ending9_home', 'exam_closeup', 'final_gate', 'title', 'stairwell'] },
   light: { dir: 'sprites/lights/', names: ['light_player', 'light_window', 'light_window_dawn', 'light_lamp', 'light_door_leak'] },
   mat: { dir: 'ui/materials/', names: ['ena_comment', 'ena_paint', 'ena_sketch', 'kanade_cupnoodle', 'kanade_earphones', 'kanade_score', 'mafuyu_blank_paper', 'mafuyu_checkup', 'mafuyu_nameplate', 'mizuki_diary', 'mizuki_postcard', 'mizuki_ribbon'] },
 };
@@ -47,7 +57,7 @@ for (const [prefix, g] of Object.entries(GROUPS)) {
 }
 
 /** 例：tex('obj', 'bed') → 'obj:bed' */
-export const tex = (prefix: 'obj' | 'mon' | 'scn' | 'tile' | 'bg' | 'mat' | 'light', name: string) => `${prefix}:${name}`;
+export const tex = (prefix: 'obj' | 'mon' | 'scn' | 'tile' | 'bg' | 'mat' | 'light' | 'decal' | 'backdrop', name: string) => `${prefix}:${name}`;
 
 /** 官方小人的帧（不提交，本地放在 assets/sprites/official/） */
 const OFFICIAL: Record<string, { front: string[]; back: string[]; blink: string[] }> = {};

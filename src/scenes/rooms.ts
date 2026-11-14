@@ -48,6 +48,25 @@ export interface RoomLight {
   cycle?: (1 | 2 | 3 | 4 | 'final')[];
 }
 
+/** 装饰：不参与碰撞。地面贴花、墙面装饰、周目主题装饰 */
+export interface RoomDecor {
+  /** 贴图名（带前缀 'decal:' 时从 sprites/decals/ 找，否则从 sprites/objects/ 找） */
+  tex: string;
+  /** 格坐标，可带小数；贴墙的装饰 y 可以是负数（画在立面上） */
+  x: number;
+  y: number;
+  /** 宽度（格），默认 1 */
+  scale?: number;
+  /** 旋转角度 */
+  angle?: number;
+  /** 透明度，默认 1 */
+  alpha?: number;
+  /** 只在这些周目出现 */
+  cycle?: (1 | 2 | 3 | 4 | 'final')[];
+  /** 贴在墙上（立面上） */
+  wall?: boolean;
+}
+
 export interface RoomDef {
   id: string;
   map: string[];
@@ -71,6 +90,8 @@ export interface RoomDef {
   doors?: Record<string, string>;
   /** 固定光源。窗户类物件会自动在地上生成一块窗光，不用写在这里 */
   lights?: RoomLight[];
+  /** 装饰列表（R6） */
+  decor?: RoomDecor[];
 }
 
 const DESK = { id: 'desk', color: 0x4a4038, label: '桌', tex: 'school_desk' };
@@ -191,6 +212,14 @@ export const ROOMS: Record<string, RoomDef> = {
       W: { id: 'corridor_window', color: 0x1e2a36, label: '窗', tex: 'window_night', wall: true },
       S: { id: 'stairs', color: 0x3a3a3a, label: '楼梯口', tex: 'stairs' },
     },
+    decor: [
+      // 瑞希周目：走廊里散落的缎带（取代画在墙和地板贴图里的）
+      { tex: 'mizuki_ribbon_01', x: 6.2, y: -0.6, scale: 0.8, wall: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_02', x: 9.5, y: 2.6, scale: 0.7, angle: 20, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 18.3, y: -0.4, scale: 0.8, wall: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_04', x: 22.6, y: 3.3, scale: 0.7, angle: -35, cycle: [3] },
+      { tex: 'mizuki_ribbon_02', x: 27.4, y: 1.8, scale: 0.6, angle: 70, cycle: [3] },
+    ],
     // 3/4/5 是只在对应周目能进的房间，由第二幕的场景判断能不能进
     exits: {
       '1': { to: 'infirmary', arriveAt: '1' },
@@ -372,6 +401,13 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'corridor2',
     floor: 2,
     doors: { '1': 'stairs2', T: 'pink_room2', P: 'pink_room2' },
+    decor: [
+      { tex: 'mizuki_ribbon_03', x: 3.4, y: -0.5, scale: 0.8, wall: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_01', x: 8.6, y: 2.4, scale: 0.7, angle: -15, cycle: [3] },
+      { tex: 'mizuki_ribbon_04', x: 15.2, y: -0.6, scale: 0.8, wall: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_02', x: 21.5, y: 3.2, scale: 0.7, angle: 40, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 25.8, y: 1.5, scale: 0.6, angle: -60, cycle: [3] },
+    ],
     map: [
       '#####c######c######c#######c####',
       '#..............................#',

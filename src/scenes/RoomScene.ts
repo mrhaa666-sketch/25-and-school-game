@@ -7,12 +7,12 @@ import type { MaterialDef } from '../core/types';
 import { makeFigure, PALETTE } from '../systems/figures';
 import { Audio, type SoundKey } from '../systems/audio';
 import { MafuyuSprite, PLAYER_HEIGHT } from '../systems/playerSprite';
-import { cropImage, fitImage, MAFUYU_STAND_REF, PORTRAIT_CROP, poseImage, tex } from '../systems/sprites';
+import { fitImage, MAFUYU_STAND_REF, poseImage, tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 import { createCameraFx } from '../systems/VisualFilter';
 import { Darkness, type LightSource } from '../systems/Darkness';
 import { SCENE } from './flow';
-import { ROOMS, type RoomDef, type RoomObject } from './rooms';
+import { ROOMS, type RoomDecor, type RoomDef, type RoomObject } from './rooms';
 import type { PlayTarget, UIScene } from './UIScene';
 
 export type Dir = 'up' | 'down' | 'left' | 'right';
@@ -370,6 +370,68 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.addShadow(this.player, key === 'mafuyu_crawl' || key === 'mafuyu_fallen' ? 52 : 30);
     this.player.add(body ?? fallback());
     if (body) this.applyPlayerLook(body);
+  }
+
+  // ------------------------------------------------------------ 装饰
+
+  /** 装饰层：不参与碰撞，画在地板 / 立面上、物件下面。缺图时画色块 */
+  private drawDecor(def: RoomDef): void {
+    const cyc = GameState.save.cycle;
+    for (const d of def.decor ?? []) {
+      if (d.cycle && !d.cycle.includes(cyc)) continue;
+      if (GameState.isFinal && !d.cycle) continue; // 终周目：地面贴花、主题装饰都不显示（N9）
+      const cx = this.originX + d.x * TILE;
+      const cy = this.originY + d.y * TILE;
+      const w = (d.scale ?? 1) * TILE;
+      const key = d.tex.startsWith('decal:') ? tex('decal', d.tex.slice(6)) : tex('obj', d.tex);
+      if (this.textures.exists(key)) {
+        const img = this.add.image(cx, cy, key).setAngle(d.angle ?? 0).setAlpha(d.alpha ?? 1).setTint(0xc8c8c8);
+        img.setScale(w / img.width);
+        this.roomLayer.add(img);
+      } else this.drawDecorBlock(d, cx, cy, w);
+    }
+  }
+
+  /** 装饰的色块占位：按名字大致画个形状 */
+  private drawDecorBlock(d: RoomDecor, cx: number, cy: number, w: number): void {
+    const g = this.add.graphics({ x: cx, y: cy });
+    g.setAngle(d.angle ?? 0).setAlpha(d.alpha ?? 1);
+    this.roomLayer.add(g);
+    const name = d.tex.replace(/^decal:/, '');
+    if (/ribbon/.test(name)) {
+      // 缎带：一个蝴蝶结加两条带子
+      const r = w / 2;
+      g.fillStyle(0xc87a9a, 0.9);
+      g.fillTriangle(0, 0, -r, -r * 0.55, -r, r * 0.55);
+      g.fillTriangle(0, 0, r, -r * 0.55, r, r * 0.55);
+      g.fillStyle(0xa85a7a, 1).fillCircle(0, 0, r * 0.18);
+      g.lineStyle(2, 0xc87a9a, 0.85).lineBetween(0, 0, -r * 0.35, r * 1.1).lineBetween(0, 0, r * 0.3, r * 1.2);
+    } else if (/stain|footprint/.test(name)) {
+      g.fillStyle(0x0a0908, 0.35).fillEllipse(0, 0, w, w * 0.55);
+    } else if (/crack|glass/.test(name)) {
+      g.lineStyle(1, 0x0a0a0a, 0.6).lineBetween(-w / 2, 0, -w / 6, -w / 8).lineBetween(-w / 6, -w / 8, w / 6, w / 10).lineBetween(w / 6, w / 10, w / 2, -w / 12);
+    } else if (/paper|test|score|chalk/.test(name)) {
+      g.fillStyle(0xbab4a6, 0.45).fillRect(-w / 2, -w * 0.35, w, w * 0.7);
+    } else {
+      g.fillStyle(0x3a3530, 0.8).fillRect(-w / 2, -w / 2, w, w);
+    }
+  }
+
+  /** 绘名周目画像的色块占位：画框、深色画布、一张没画完的脸。6 种略有不同 */
+  private drawPortraitBlock(g: Phaser.GameObjects.Graphics, box: { x: number; y: number; w: number; h: number }, n: number): void {
+    const frame = [0x3a2e24, 0x2e2a26, 0x44382a, 0x302822, 0x3c3430, 0x2a2420][n - 1];
+    const w = Math.min(box.w, box.h * 0.75);
+    const h = Math.min(box.h, w / 0.75);
+    const x = box.x + (box.w - w) / 2;
+    const y = box.y + box.h - h;
+    g.fillStyle(frame, 1).fillRect(x, y, w, h);
+    g.fillStyle(0x1a1c1e, 1).fillRect(x + 3, y + 3, w - 6, h - 6);
+    const fx = x + w / 2 + ((n % 3) - 1) * w * 0.08;
+    const fy = y + h * (0.38 + (n % 2) * 0.06);
+    g.fillStyle(0x8a8478, 0.8).fillEllipse(fx, fy, w * 0.38, h * 0.36);
+    // 脸被涂掉了
+    g.lineStyle(3, 0x1a1c1e, 0.9).lineBetween(fx - w * 0.2, fy - h * 0.1, fx + w * 0.2, fy + h * 0.08);
+    g.lineBetween(fx - w * 0.18, fy + h * 0.06, fx + w * 0.16, fy - h * 0.12);
   }
 
   // ------------------------------------------------------------ 门和出口
@@ -781,7 +843,10 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     }
     faceMask.destroy();
 
+    this.drawDecor(def);
+
     // 物件：有图用图，没图画色块。同一字母可能分散在多处（例如走廊的几扇窗），按连通区域分别画
+    let portraitIndex = 0;
     for (const comp of this.components(def, [...letters])) {
       const obj = def.objects[comp.ch];
       if (obj.hidden) continue;
@@ -799,9 +864,21 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         continue;
       }
       const look = this.cycleLook(obj);
-      const img = look === 'portrait'
-        ? cropImage(this, tex('tile', 'wall_school_ena'), PORTRAIT_CROP, { x: x + 4, y: y - TILE * 0.9, w: cw - 8, h: chh + TILE * 0.9 })
-        : look
+      if (look === 'portrait') {
+        // 绘名周目：走廊的窗换成画像。按顺序轮换 6 张，同一条走廊里不会连续重复
+        const n = (portraitIndex++ % 6) + 1;
+        const box = isBack.has(`${comp.x0},${comp.y1}`) ? this.onFacadeBox(obj, x, y + chh, cw) : { x: x + 4, y: y - TILE * 0.9, w: cw - 8, h: chh + TILE * 0.9 };
+        const pimg = fitImage(this, tex('obj', `ena_portrait_0${n}`), box);
+        if (pimg) {
+          pimg.setTint(0xc8c8c8);
+          this.roomLayer.add(pimg);
+          const list = this.objectImages.get(comp.ch) ?? [];
+          list.push(pimg);
+          this.objectImages.set(comp.ch, list);
+        } else this.drawPortraitBlock(g, box, n);
+        continue;
+      }
+      const img = look
         ? fitImage(
             this,
             tex('obj', look),
