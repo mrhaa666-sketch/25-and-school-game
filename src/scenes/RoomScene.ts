@@ -132,6 +132,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     // 四周目节拍器：随节拍整体压暗一下
     this.beatShade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1).setOrigin(0).setScrollFactor(0).setDepth(450).setAlpha(0);
     this.cameras.main.setBackgroundColor('#000000');
+    this.setupHudCamera();
     Audio.loop('amb', this.ambience(), 1600);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => Audio.loop('whisper', null, 300));
   }
@@ -336,6 +337,61 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     return tHas(key, GameState.save.cycle) ? this.text(key) : [];
   }
 
+  // ------------------------------------------------------------ 镜头
+
+  /**
+   * 房间矮的时候放大镜头，让房间高度至少占屏幕的 70%（上限 2 倍，取 0.25 的倍数）。
+   * 放大后比屏幕大的方向跟随玩家；房间整个放得下就居中不动。
+   */
+  protected frameRoom(worldW: number, worldH: number): void {
+    const cam = this.cameras.main;
+    const minH = GAME_HEIGHT * 0.7;
+    const zoom = worldH >= minH ? 1 : Math.min(2, Math.ceil(minH / worldH / 0.25) * 0.25);
+    cam.setZoom(zoom);
+    const cx = this.originX + worldW / 2;
+    const cy = this.originY + worldH / 2;
+    const viewW = GAME_WIDTH / zoom;
+    const viewH = GAME_HEIGHT / zoom;
+    if (worldW > viewW || worldH > viewH) {
+      // 边界至少和视野一样大，并以房间为中心，这样放不满的那个方向保持居中
+      const bw = Math.max(worldW, viewW);
+      const bh = Math.max(worldH, viewH);
+      cam.setBounds(cx - bw / 2, cy - bh / 2, bw, bh);
+      cam.startFollow(this.player, true, 0.12, 0.12);
+    } else {
+      cam.stopFollow();
+      cam.removeBounds();
+      cam.centerOn(cx, cy);
+    }
+  }
+
+  /**
+   * 屏幕固定的东西（scrollFactor 为 0：体力条、节拍标记、特写图、噪点）交给不缩放的 HUD 镜头画，
+   * 主镜头只画房间。这样镜头放大时它们的位置和大小不变。
+   */
+  private setupHudCamera(): void {
+    const main = this.cameras.main;
+    const hud = this.cameras.add(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    // 淡入淡出两个镜头一起做
+    for (const m of ['fadeIn', 'fadeOut', 'fade'] as const) {
+      const orig = main[m].bind(main) as (...a: unknown[]) => Phaser.Cameras.Scene2D.Camera;
+      const mirror = hud[m].bind(hud) as (...a: unknown[]) => Phaser.Cameras.Scene2D.Camera;
+      (main as unknown as Record<string, unknown>)[m] = (...a: unknown[]) => {
+        // 回调只留给主镜头，避免触发两次
+        mirror(...a.slice(0, 4));
+        return orig(...a);
+      };
+    }
+    const assign = () => {
+      for (const o of this.children.list) {
+        const sf = (o as unknown as { scrollFactorX?: number }).scrollFactorX;
+        o.cameraFilter = sf === 0 ? main.id : hud.id;
+      }
+    };
+    this.events.on(Phaser.Scenes.Events.PRE_RENDER, assign);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.PRE_RENDER, assign));
+  }
+
   // ------------------------------------------------------------ 房间
 
   protected loadRoom(roomOrId: string | RoomDef, arriveAt?: string, at?: { x: number; y: number }): void {
@@ -442,16 +498,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.addMaterialHints();
     this.addDoorLights();
 
-    // 镜头：房间比屏幕大时跟随玩家
-    const cam = this.cameras.main;
-    if (worldW > GAME_WIDTH || worldH > GAME_HEIGHT) {
-      cam.setBounds(0, 0, Math.max(worldW, GAME_WIDTH), Math.max(worldH, GAME_HEIGHT));
-      cam.startFollow(this.player, true, 0.12, 0.12);
-    } else {
-      cam.stopFollow();
-      cam.removeBounds();
-      cam.setScroll(0, 0);
-    }
+    this.frameRoom(worldW, worldH);
 
     // 放置玩家
     const spawn = at ?? (arriveAt ? this.arrivalTile(arriveAt) : (def.spawn ?? { x: 1, y: 1 }));

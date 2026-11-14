@@ -203,8 +203,8 @@ export class Act05Scene extends RoomScene {
       triggerEnding(this, 5);
       return;
     }
-    const paper = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 520, 600, 0xe9e4d8).setDepth(990).setAlpha(0);
-    const hand = this.add.graphics().setDepth(991).setAlpha(0);
+    const paper = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 520, 600, 0xe9e4d8).setScrollFactor(0).setDepth(990).setAlpha(0);
+    const hand = this.add.graphics().setScrollFactor(0).setDepth(991).setAlpha(0);
     hand.lineStyle(2, 0x2a2620, 1);
     for (let y = GAME_HEIGHT / 2 - 250; y < GAME_HEIGHT / 2 + 270; y += 30) {
       let x = GAME_WIDTH / 2 - 230;

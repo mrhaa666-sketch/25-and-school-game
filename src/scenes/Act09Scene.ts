@@ -89,12 +89,12 @@ export class Act09Scene extends RoomScene {
   private openChoice(): void {
     this.locked = true;
     const y = GAME_HEIGHT - 150;
-    this.add.existing(panel(this, GAME_WIDTH / 2 - 260, y - 50, 520, 100, 0.92).setDepth(900));
+    this.add.existing(panel(this, GAME_WIDTH / 2 - 260, y - 50, 520, 100, 0.92).setScrollFactor(0).setDepth(900));
     const agree = this.textOne('act09.agree');
     const refuse = this.textOne('act09.refuse');
     this.buttons = [
-      this.add.text(GAME_WIDTH / 2 - 120, y, agree, textStyle(30)).setOrigin(0.5).setDepth(901),
-      this.add.text(GAME_WIDTH / 2 + 120, y, refuse, textStyle(30)).setOrigin(0.5).setDepth(901),
+      this.add.text(GAME_WIDTH / 2 - 120, y, agree, textStyle(30)).setOrigin(0.5).setScrollFactor(0).setDepth(901),
+      this.add.text(GAME_WIDTH / 2 + 120, y, refuse, textStyle(30)).setOrigin(0.5).setScrollFactor(0).setDepth(901),
     ];
     this.cursor = 0; // 默认停在「同意」上
     this.choosing = true;

@@ -160,7 +160,9 @@ export class Act04Scene extends RoomScene {
       await this.say(this.t('cut'));
       this.ropeCut = true;
       this.tweens.killTweensOf(this.descending!);
-      const fallY = GAME_HEIGHT + 80;
+      // 镜头可能放大了：按当前视野的下沿算，而不是屏幕高度
+      const viewBottom = this.cameras.main.worldView.bottom;
+      const fallY = viewBottom + 80;
       this.ropeLine?.destroy();
       Audio.play('scissors');
       this.canvasBleeds();
@@ -168,10 +170,10 @@ export class Act04Scene extends RoomScene {
       const ai = GameState.cycleDef.monsterA.ai;
       const x = this.descending!.x;
       Audio.play(ai === 'statue' ? 'plaster_break' : ai === 'piano' ? 'piano_crash' : 'fall_crash');
-      if (ai === 'statue') this.chunks(x, GAME_HEIGHT - 20, 0xd8d4cc); // 碎成石膏块，再化成灰
+      if (ai === 'statue') this.chunks(x, viewBottom - 20, 0xd8d4cc); // 碎成石膏块，再化成灰
       if (ai === 'piano') this.cameras.main.flash(120, 90, 90, 90); // 琴弦乱响一声
       this.cameras.main.shake(ai === 'piano' ? 380 : 200, ai === 'piano' ? 0.012 : 0.006);
-      this.time.delayedCall(ai === 'statue' ? 500 : 0, () => ashBurst(this, x, GAME_HEIGHT - 20));
+      this.time.delayedCall(ai === 'statue' ? 500 : 0, () => ashBurst(this, x, viewBottom - 20));
       this.descending?.destroy();
       await this.wait(800);
       await this.say(this.t('fall'));
