@@ -114,6 +114,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   protected extraLights: LightSource[] = [];
   /** 前景层（N4）：画在角色上方、带视差的东西；fade 是被角色挡住时的淡出系数 */
   private foreground: { obj: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics; base: number; w: number; h: number; fade: number; lamp?: boolean }[] = [];
+  /** 光里的灰尘（N5） */
+  private dust?: Phaser.GameObjects.Graphics;
+  private motes: { x: number; y: number; vx: number; vy: number; life: number; age: number; light: RoomLightState }[] = [];
   /** 场上的怪物（N7：在黑暗里保留一个看得见的轮廓） */
   private actors = new Set<Actor>();
   /** 按脚底 y 排序的东西（物件、玩家、怪物、成员演出图）。y 就是脚底 */
@@ -190,6 +193,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.extraLights = [];
     this.actors = new Set();
     this.foreground = [];
+    this.motes = [];
+    // 灰尘画在黑暗层下面：只在被照亮的地方看得见
+    this.dust = this.add.graphics().setDepth(103);
     this.beatShade.setVisible(false); // 节拍改为调制黑暗层的亮度
     this.registry.set('roomLit', !GameState.isFinal);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -701,8 +707,55 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     }
   }
 
+  /**
+   * 窗光和灯光里缓慢飘动的尘粒，光外没有。同屏总数有上限，优先保证帧率。终周目没有。
+   */
+  private updateDust(delta: number): void {
+    const g = this.dust;
+    if (!g) return;
+    g.clear();
+    if (GameState.isFinal) return;
+    const sources = this.roomLights.filter((l) => (l.lamp || l.tex === 'light_window') && l.intensity > 0 && !l.out);
+    if (!sources.length) return;
+    const view = this.cameras.main.worldView;
+    const visible = sources.filter((l) => view.contains(l.x, l.y) || Phaser.Geom.Rectangle.Overlaps(view, new Phaser.Geom.Rectangle(l.x - l.radius, l.y - l.radius, l.radius * 2, l.radius * 2)));
+    // 补充新的尘粒：每个光源最多 8 粒，总数最多 48
+    const perLight = 8;
+    const cap = 48;
+    for (const l of visible) {
+      if (this.motes.length >= cap) break;
+      const n = this.motes.filter((m) => m.light === l).length;
+      if (n < perLight && Math.random() < 0.08) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random()) * l.radius * 0.8;
+        this.motes.push({
+          x: l.x + Math.cos(a) * r,
+          y: l.y + Math.sin(a) * r * (l.squash ?? 1) - TILE * Math.random() * 1.5,
+          vx: Phaser.Math.FloatBetween(-6, 6),
+          vy: Phaser.Math.FloatBetween(2, 9),
+          life: Phaser.Math.Between(3000, 6500),
+          age: 0,
+          light: l,
+        });
+      }
+    }
+    const dt = delta / 1000;
+    this.motes = this.motes.filter((m) => {
+      m.age += delta;
+      if (m.age >= m.life || !visible.includes(m.light)) return false;
+      m.x += m.vx * dt + Math.sin((m.age + m.x) * 0.002) * 3 * dt;
+      m.y += m.vy * dt;
+      // 淡入、淡出
+      const t = m.age / m.life;
+      const a = Math.min(1, t * 4, (1 - t) * 4) * 0.55;
+      g.fillStyle(0xe8e4d8, a).fillCircle(m.x, m.y, 1);
+      return true;
+    });
+  }
+
   private updateDarkness(): void {
     this.updateForeground();
+    this.updateDust(this.game.loop.delta);
     if (!this.darkness) return;
     this.darkness.beat = this.beatShade ? this.beatShade.alpha / 0.22 : 0;
     const t = this.time.now;
@@ -876,6 +929,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.roomExtras.forEach((o) => o.destroy());
     this.roomExtras = [];
     this.foreground = [];
+    this.motes = [];
     this.objectImages = new Map();
     const floorKey = this.floorTexFor(def);
     const texturedFloor = this.textures.exists(floorKey);
