@@ -40,7 +40,8 @@ npm run dist:win
 
 - F11 切换全屏
 - 存档写在 `%APPDATA%\25-and-school-game\save.json`
-- 本地放着的 `assets/sprites/official/` 也会被打包进去（发给别人之前请留意）
+- 官方小人素材会被打包进去（发给别人之前请留意）
+- 每次推送到 main，GitHub Actions 会在 Windows 上自动打包，在 Actions 页面的运行记录里下载 `25-and-school-windows`
 - 想换程序图标：放一个 `build/icon.ico`（256×256）再打包
 
 本地调试桌面版：`npm run electron`
@@ -49,7 +50,7 @@ npm run dist:win
 
 - 图片放在 `assets/` 下，路径和 `docs/art-prompts.md` 一致。缺哪张，游戏里那部分就继续用色块占位，不会报错。
 - `assets/sprites/characters/`：GPT 生成的真冬（侧面、爬行、攀绳、晕倒、坐下的背影）和幼年真冬，已提交。
-- **官方小人素材不提交**（仓库是公开的），需要在本地放好，用于真冬的正面 / 背面走路和第一幕的三个人：
+- 官方小人素材已提交，用于真冬的正面 / 背面走路和第一幕的三个人：
 
 ```
 assets/sprites/official/
