@@ -1,13 +1,71 @@
 import type Phaser from 'phaser';
+import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { makeFigure, PALETTE } from '../systems/figures';
+import { fitImage, tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 
 /**
  * 成员场景的占位画面（交接文档 4.2）。id 来自 cycles/*.json 的 scenes 字段。
  * 克制处理：只画轮廓和关键物件，不画细节。M6 替换为作者准备的立绘。
  */
-export function drawMemberScene(scene: Phaser.Scene, id: string, x: number, y: number): Phaser.GameObjects.Container {
+/** 成员场景 id（cycles/*.json 的 scenes 字段）→ 素材文件名 */
+export const MEMBER_ART: Record<string, string> = {
+  hanged_ena: 'floor3_hanged',
+  canvas_ena: 'floor3_canvas',
+  drained_mizuki: 'floor2_lying',
+  folded_clothes: 'floor2_clothes',
+  shattering_kanade: 'music_kanade_play',
+  blank_score_kanade: 'music_kanade_blank',
+};
+
+/**
+ * size：素材图在游戏里的最大宽高（像素）。原点在底边中央。
+ */
+/**
+ * 这些成员场景的素材是一整幅画面（房间一角），不适合直接摆在地图里：
+ * 房间里只放一个克制的痕迹，真冬「看到」时再把整幅画面浮现出来（showMemberOverlay）。
+ */
+const OVERLAY_ONLY = new Set(['hanged_ena']);
+
+export function hasMemberOverlay(scene: Phaser.Scene, id: string): boolean {
+  return OVERLAY_ONLY.has(id) && scene.textures.exists(tex('scn', MEMBER_ART[id]));
+}
+
+/** 画面中央浮现成员场景的整幅图。返回关闭函数 */
+export function showMemberOverlay(scene: Phaser.Scene, id: string): () => Promise<void> {
+  const key = tex('scn', MEMBER_ART[id]);
+  const img = fitImage(scene, key, { x: GAME_WIDTH / 2 - 230, y: GAME_HEIGHT / 2 - 270, w: 460, h: 460 });
+  if (!img) return async () => {};
+  img.setScrollFactor(0).setDepth(880).setAlpha(0).setTint(0xb8b8b8);
+  scene.tweens.add({ targets: img, alpha: 1, duration: 900 });
+  return () =>
+    new Promise((resolve) =>
+      scene.tweens.add({ targets: img, alpha: 0, duration: 700, onComplete: () => (img.destroy(), resolve()) }),
+    );
+}
+
+export function drawMemberScene(scene: Phaser.Scene, id: string, x: number, y: number, size = 120): Phaser.GameObjects.Container {
   const c = scene.add.container(x, y).setDepth(95);
+  if (hasMemberOverlay(scene, id) && scene.textures.exists(tex('obj', 'ropes'))) {
+    // 房间里只有一根空着的绳圈（从绳子素材里裁出一根）
+    const ROPE = { x: 233, y: 36, w: 58, h: 440 };
+    const sc = 110 / ROPE.h;
+    const rope = scene.add
+      .image(-(ROPE.x + ROPE.w / 2) * sc, -(ROPE.y + ROPE.h) * sc, tex('obj', 'ropes'))
+      .setOrigin(0)
+      .setScale(sc)
+      .setCrop(ROPE.x, ROPE.y, ROPE.w, ROPE.h)
+      .setTint(0xa8a8a8);
+    c.add(rope);
+    scene.tweens.add({ targets: rope, angle: { from: -1.5, to: 1.5 }, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    return c;
+  }
+  const art = MEMBER_ART[id];
+  const img = art ? fitImage(scene, tex('scn', art), { x: -size / 2, y: -size, w: size, h: size }) : null;
+  if (img) {
+    c.add(img.setTint(0xc0c0c0)).setName(art);
+    return c;
+  }
   switch (id) {
     case 'hanged_ena':
       c.add(makeFigure(scene, 0, 10, { ...PALETTE.ena, pose: 'hang', label: '绘名' }));

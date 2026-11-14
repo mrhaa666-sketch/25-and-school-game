@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { CHASE, SANITY_COST } from '../core/constants';
 import { GameState } from '../core/GameState';
-import { makeMonster } from '../systems/figures';
+import { makeMonsterById } from '../systems/figures';
 import { actKey, startAct, triggerEnding } from './flow';
 import { type Actor, RoomScene } from './RoomScene';
 import type { RoomObject } from './rooms';
@@ -118,7 +118,7 @@ export class Act02Scene extends RoomScene {
     const color = Phaser.Display.Color.HexStringToColor(def.color).color;
     const at = this.tileCenter(30, 2);
     // 怪物穿墙出现在楼梯口；碰撞盒设为 0，沿走廊直线追
-    this.monster = this.addActor(makeMonster(this, 0, 0, color, def.name), at.x, at.y + 12, CHASE.chase1Speed);
+    this.monster = this.addActor(makeMonsterById(this, 0, 0, def.id, color, def.name), at.x, at.y + 12, CHASE.chase1Speed);
     this.monster.obj.setAlpha(0);
     this.tweens.add({ targets: this.monster.obj, alpha: 1, duration: 200 });
     this.cameras.main.shake(250, 0.008);

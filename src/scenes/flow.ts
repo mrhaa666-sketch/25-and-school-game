@@ -109,6 +109,7 @@ export function triggerEnding(scene: Phaser.Scene, id: number, lines?: string[])
     showStory(scene, {
       header,
       lines: lines ?? tLines('ending9', GameState.save.cycle),
+      bg: 'bg:ending9_home',
       onDone: (s) => {
         GameState.replace(next);
         GameState.persist();

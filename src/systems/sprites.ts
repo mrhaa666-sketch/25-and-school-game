@@ -31,6 +31,22 @@ export const SPRITE_FILES: Record<string, string> = {
   mafuyu_child_counting: `${C}mafuyu_child_counting.png`,
 };
 
+/** 场景类素材：key 就是文件名（不带扩展名），前缀区分类别 */
+const GROUPS: Record<string, { dir: string; names: string[] }> = {
+  obj: { dir: 'sprites/objects/', names: ['bed', 'blackboard', 'chair', 'class_door', 'easel_portraits', 'grand_piano', 'iron_door', 'lectern', 'locker', 'medicine_cabinet', 'medicine_cabinet_open', 'mirror', 'office_desk', 'pink_door', 'pipe_entrance', 'ropes', 'school_desk', 'school_desk_paper', 'school_desk_paper_filled', 'school_gate', 'scissors', 'shoe_locker', 'stairs', 'trash_can', 'wall_clock', 'window_night'] },
+  mon: { dir: 'sprites/monsters/', names: ['faceless', 'flying_score', 'moving_door', 'moving_door_folded', 'note', 'nurse', 'piano', 'piano_strings', 'plaster', 'turned_back'] },
+  scn: { dir: 'sprites/scenes/', names: ['floor2_clothes', 'floor2_lying', 'floor3_canvas', 'floor3_canvas_cut', 'floor3_hanged', 'music_kanade_blank', 'music_kanade_play', 'music_kanade_shatter'] },
+  tile: { dir: 'tiles/', names: ['floor_final', 'floor_pink_room', 'floor_pipe', 'floor_school', 'floor_school_ena', 'floor_school_kanade', 'floor_school_mizuki', 'wall_school', 'wall_school_ena', 'wall_school_mizuki'] },
+  bg: { dir: 'ui/bg/', names: ['climb_facade', 'ending10_lot', 'ending9_home', 'exam_closeup', 'final_gate', 'title'] },
+  mat: { dir: 'ui/materials/', names: ['ena_comment', 'ena_paint', 'ena_sketch', 'kanade_cupnoodle', 'kanade_earphones', 'kanade_score', 'mafuyu_blank_paper', 'mafuyu_checkup', 'mafuyu_nameplate', 'mizuki_diary', 'mizuki_postcard', 'mizuki_ribbon'] },
+};
+for (const [prefix, g] of Object.entries(GROUPS)) {
+  for (const n of g.names) SPRITE_FILES[`${prefix}:${n}`] = `${g.dir}${n}.png`;
+}
+
+/** 例：tex('obj', 'bed') → 'obj:bed' */
+export const tex = (prefix: 'obj' | 'mon' | 'scn' | 'tile' | 'bg' | 'mat', name: string) => `${prefix}:${name}`;
+
 /** 官方小人的帧（不提交，本地放在 assets/sprites/official/） */
 const OFFICIAL: Record<string, { front: string[]; back: string[]; blink: string[] }> = {};
 for (const who of ['mafuyu', 'kanade', 'ena', 'mizuki']) {
@@ -144,3 +160,23 @@ export function poseImage(
 
 /** GPT 生成的真冬站立图，用作其他姿势（爬、坐、躺）的身高基准，保证比例一致 */
 export const MAFUYU_STAND_REF = ['mafuyu_left', 'mafuyu_right'];
+
+/**
+ * 把一张图放进矩形框里：按图实际画出的范围等比缩放到框内（contain），
+ * 水平居中、底边对齐框的底边。用于物件、成员场景、怪物。
+ */
+export function fitImage(
+  scene: Phaser.Scene,
+  key: string,
+  box: { x: number; y: number; w: number; h: number },
+): Phaser.GameObjects.Image | null {
+  if (!hasAll(scene, [key])) return null;
+  const b = bbox(scene, key);
+  const bw = b.x1 - b.x0 + 1;
+  const bh = b.y1 - b.y0 + 1;
+  const scale = Math.min(box.w / bw, box.h / bh);
+  return scene.add
+    .image(box.x + box.w / 2, box.y + box.h, key)
+    .setOrigin((b.x0 + bw / 2) / b.w, (b.y1 + 1) / b.h)
+    .setScale(scale);
+}

@@ -12,6 +12,8 @@ export interface StoryData {
   lines: string[];
   /** 句子上方显示的一张图（素材 key），缺失就不显示 */
   image?: string;
+  /** 全屏背景图（素材 key），压暗显示 */
+  bg?: string;
   onDone: (scene: Phaser.Scene) => void;
 }
 
@@ -41,6 +43,11 @@ export class StoryScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor('#000000');
+    if (this.data_.bg && this.textures.exists(this.data_.bg)) {
+      this.add.image(0, 0, this.data_.bg).setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setTint(0x8a8a8a);
+      // 文字区压暗，保证看得清
+      this.add.rectangle(0, GAME_HEIGHT / 2 - 90, GAME_WIDTH, 260, 0x000000, 0.45).setOrigin(0);
+    }
     if (this.data_.header) {
       this.add.text(GAME_WIDTH / 2, 120, this.data_.header, textStyle(20, COLORS.textDim)).setOrigin(0.5);
     }

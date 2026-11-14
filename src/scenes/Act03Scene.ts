@@ -111,6 +111,7 @@ export class Act03Scene extends RoomScene {
       await this.say(this.t('climb_start'));
       const m = GameState.cycleDef.monsterA;
       const climbed = await runClimb(this, {
+        monsterId: m.id,
         monsterColor: Phaser.Display.Color.HexStringToColor(m.color).color,
         monsterName: m.name,
         hint: this.textOne('act03.climb_hint'),

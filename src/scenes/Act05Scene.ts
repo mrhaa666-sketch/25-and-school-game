@@ -6,7 +6,7 @@ import { tUi } from '../core/text';
 import { ExamUI } from '../systems/ExamUI';
 import { makeFigure, PALETTE } from '../systems/figures';
 import { PLAYER_HEIGHT } from '../systems/playerSprite';
-import { MAFUYU_STAND_REF, poseImage } from '../systems/sprites';
+import { MAFUYU_STAND_REF, poseImage, tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 import { actKey, startAct, triggerEnding } from './flow';
 import { RoomScene } from './RoomScene';
@@ -70,7 +70,8 @@ export class Act05Scene extends RoomScene {
       [...row].forEach((ch, x) => {
         if (ch !== 'd' && ch !== 'X') return;
         const c = this.tileCenter(x, y);
-        if (ch === 'd') {
+        // 有课桌图时，试卷已经画在图上了
+        if (ch === 'd' && !this.objectImages.has('d')) {
           const p = this.add.rectangle(c.x, c.y - 2, 22, 16, 0xe0dacb).setDepth(5);
           this.roomLayer.add(p);
           this.papers.push(p);
@@ -162,6 +163,16 @@ export class Act05Scene extends RoomScene {
     self.add(poseImage(this, 'mafuyu_sit_back', PLAYER_HEIGHT, MAFUYU_STAND_REF) ?? makeFigure(this, 0, 0, { ...PALETTE.mafuyu, pose: 'sit' }));
     this.player.setVisible(false);
     await this.wait(1200);
+    // 有图：课桌一张张换成「写满了」的那张图
+    const filled = tex('obj', 'school_desk_paper_filled');
+    if (this.textures.exists(filled)) {
+      for (const img of Phaser.Utils.Array.Shuffle([...(this.objectImages.get('d') ?? [])])) {
+        img.setTexture(filled);
+        this.cameras.main.shake(40, 0.001);
+        await this.wait(260);
+      }
+      this.objectImages.get('X')?.forEach((i) => i.setTexture(filled));
+    }
     for (const p of Phaser.Utils.Array.Shuffle([...this.papers])) {
       const g = this.add.graphics().setDepth(6);
       g.lineStyle(1, 0x2a2620, 0.9);
@@ -172,6 +183,17 @@ export class Act05Scene extends RoomScene {
     }
     await this.wait(900);
     // 她低头看自己的卷子
+    const closeup = tex('bg', 'exam_closeup');
+    if (this.textures.exists(closeup)) {
+      const bg = this.add.image(0, 0, closeup).setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setScrollFactor(0).setDepth(990).setAlpha(0);
+      await this.tween({ targets: bg, alpha: 1, duration: 1600 });
+      await this.wait(2200);
+      self.destroy();
+      this.cameras.main.fadeOut(1200, 0, 0, 0);
+      await this.wait(1300);
+      triggerEnding(this, 5);
+      return;
+    }
     const paper = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 520, 600, 0xe9e4d8).setDepth(990).setAlpha(0);
     const hand = this.add.graphics().setDepth(991).setAlpha(0);
     hand.lineStyle(2, 0x2a2620, 1);

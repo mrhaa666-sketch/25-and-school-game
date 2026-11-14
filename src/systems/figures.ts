@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { poseImage, tex } from './sprites';
 import { textStyle } from './style';
 
 /**
@@ -79,6 +80,8 @@ export function makeMonster(scene: Phaser.Scene, x: number, y: number, color: nu
 
 /** 音符形态的怪物 */
 export function makeNoteMonster(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Container {
+  const img = poseImage(scene, tex('mon', 'note'), 50);
+  if (img) return scene.add.container(x, y, [img.setTint(0xb8b8b8)]);
   const headN = scene.add.ellipse(-6, -10, 18, 13, 0x050505).setAngle(-20);
   const stem = scene.add.rectangle(2, -28, 3, 34, 0x050505);
   const flag = scene.add.triangle(4, -44, 0, 0, 12, 8, 0, 14, 0x050505);
@@ -99,4 +102,40 @@ export function ashBurst(scene: Phaser.Scene, x: number, y: number, count = 26):
       onComplete: () => p.destroy(),
     });
   }
+}
+
+/** 怪物 id（cycles/*.json）→ 素材文件名与游戏里的身高（像素；真冬是 66） */
+const MONSTER_ART: Record<string, { file: string; height: number }> = {
+  nurse: { file: 'nurse', height: 130 },
+  plaster: { file: 'plaster', height: 124 },
+  moving_door: { file: 'moving_door', height: 112 },
+  moving_door_folded: { file: 'moving_door_folded', height: 112 },
+  piano: { file: 'piano', height: 96 },
+  piano_strings: { file: 'piano_strings', height: 96 },
+  faceless: { file: 'faceless', height: 92 },
+  turned_backs: { file: 'turned_back', height: 104 },
+  flying_scores: { file: 'flying_score', height: 52 },
+  note: { file: 'note', height: 50 },
+};
+
+/**
+ * 怪物：有图用图，没有图用色块占位。原点在脚底中央。
+ */
+export function makeMonsterById(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  id: string,
+  color: number,
+  label: string,
+  sizeScale = 1,
+): Phaser.GameObjects.Container {
+  const art = MONSTER_ART[id];
+  const img = art ? poseImage(scene, tex('mon', art.file), art.height * sizeScale) : null;
+  if (!img) return makeMonster(scene, x, y, color, label, sizeScale);
+  img.setTint(0xd0d0d0);
+  const c = scene.add.container(x, y, [img]);
+  // 轻微的晃动，让它看起来是活的
+  scene.tweens.add({ targets: img, angle: { from: -2, to: 2 }, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  return c;
 }

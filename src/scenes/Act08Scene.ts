@@ -3,7 +3,8 @@ import { SANITY_COST } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { makeNoteMonster, PALETTE } from '../systems/figures';
 import { actKey, startAct } from './flow';
-import { drawMemberScene } from './memberScenes';
+import { tex } from '../systems/sprites';
+import { drawMemberScene, MEMBER_ART } from './memberScenes';
 import { startNoise } from './noise';
 import { RoomScene } from './RoomScene';
 import type { RoomObject } from './rooms';
@@ -40,8 +41,16 @@ export class Act08Scene extends RoomScene {
   }
 
   protected onEnterRoom(): void {
-    const k = this.objectCenter('k');
-    this.member = drawMemberScene(this, GameState.cycleDef.scenes.musicRoom, k.x, k.y + 14);
+    const id = GameState.cycleDef.scenes.musicRoom;
+    if (this.textures.exists(tex('scn', MEMBER_ART[id] ?? ''))) {
+      // 素材图里已经画了钢琴：替换掉房间里的钢琴，放在钢琴的位置
+      this.objectImages.get('P')?.forEach((i) => i.setVisible(false));
+      const p = this.objectCenter('P');
+      this.member = drawMemberScene(this, id, p.x + 10, p.y + 44, 150);
+    } else {
+      const k = this.objectCenter('k');
+      this.member = drawMemberScene(this, id, k.x, k.y + 14);
+    }
     this.roomLayer.add(this.member);
   }
 
@@ -85,7 +94,13 @@ export class Act08Scene extends RoomScene {
       const k = this.objectCenter('k');
       const shatter = GameState.cycleDef.scenes.musicRoom !== 'blank_score_kanade';
       if (shatter && this.member) {
-        // 奏四分五裂
+        // 奏四分五裂：有裂开的图就先换成那张，停一下再碎
+        const img = this.member.list[0];
+        if (img instanceof Phaser.GameObjects.Image && this.textures.exists(tex('scn', 'music_kanade_shatter'))) {
+          img.setTexture(tex('scn', 'music_kanade_shatter'));
+          this.cameras.main.shake(200, 0.006);
+          await this.wait(900);
+        }
         this.cameras.main.flash(150, 255, 255, 255);
         this.member.destroy();
         for (let i = 0; i < 14; i++) {

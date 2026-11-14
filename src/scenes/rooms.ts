@@ -20,6 +20,10 @@ export interface RoomObject {
   label?: string;
   /** 不画色块（由场景自己画，例如成员场景、门） */
   hidden?: boolean;
+  /** 素材图（assets/sprites/objects/ 下的文件名）。没有图时画色块 */
+  tex?: string;
+  /** 挂在墙上 / 嵌在墙里的东西：宽度对齐物件，允许向上超出这一格（黑板、窗、门） */
+  wall?: boolean;
 }
 
 export interface RoomExit {
@@ -37,6 +41,9 @@ export interface RoomDef {
   spawn?: { x: number; y: number };
   floorColor?: string;
   wallColor?: string;
+  /** 地板 / 墙面贴图（assets/tiles/ 下的文件名）。不写就按周目选 */
+  floorTex?: string;
+  wallTex?: string;
   /** 所在楼层（补充周目第 3 次提示：走到材料所在楼层时停下来看一眼） */
   floor?: number;
   /**
@@ -46,8 +53,8 @@ export interface RoomDef {
   doors?: Record<string, string>;
 }
 
-const DESK = { id: 'desk', color: 0x4a4038, label: '桌' };
-const CLASS_DOOR = { id: 'class_door', color: 0x2c2620, label: '门' };
+const DESK = { id: 'desk', color: 0x4a4038, label: '桌', tex: 'school_desk' };
+const CLASS_DOOR = { id: 'class_door', color: 0x2c2620, label: '门', tex: 'class_door', wall: true };
 
 // ---------------------------------------------------------------- 程序生成的房间
 
@@ -67,7 +74,7 @@ function buildLongCorridor(): RoomDef {
     map: [top.join(''), floor, floor, floor, bottom.join('')],
     objects: {
       c: CLASS_DOOR,
-      B: { id: 'burst_door', color: 0x3a2a24, label: '门' },
+      B: { id: 'burst_door', color: 0x3a2a24, label: '门', tex: 'class_door', wall: true },
     },
     exits: {},
   };
@@ -100,6 +107,8 @@ function buildPipe(): RoomDef {
     spawn: { x: 1, y: 5 },
     floorColor: '#1a1a1c',
     wallColor: '#0b0b0c',
+    floorTex: 'floor_pipe',
+    wallTex: 'floor_pipe',
   };
 }
 
@@ -137,11 +146,11 @@ export const ROOMS: Record<string, RoomDef> = {
       '########1#########',
     ],
     objects: {
-      B: { id: 'bed', color: 0xb8b4aa, spot: 'bedhead', label: '病床' },
-      b: { id: 'bed2', color: 0xa8a49a, label: '病床' },
-      M: { id: 'mirror', color: 0x6f7c86, label: '镜子' },
-      K: { id: 'cabinet', color: 0x58625a, spot: 'cabinet', label: '药柜' },
-      D: { id: 'desk', color: 0x5a4a3a, label: '办公桌' },
+      B: { id: 'bed', color: 0xb8b4aa, spot: 'bedhead', label: '病床', tex: 'bed' },
+      b: { id: 'bed2', color: 0xa8a49a, label: '病床', tex: 'bed' },
+      M: { id: 'mirror', color: 0x6f7c86, label: '镜子', tex: 'mirror', wall: true },
+      K: { id: 'cabinet', color: 0x58625a, spot: 'cabinet', label: '药柜', tex: 'medicine_cabinet' },
+      D: { id: 'desk', color: 0x5a4a3a, label: '办公桌', tex: 'office_desk' },
     },
     exits: { '1': { to: 'corridor4', arriveAt: '1' } },
     spawn: { x: 3, y: 2 },
@@ -159,8 +168,8 @@ export const ROOMS: Record<string, RoomDef> = {
       '################################',
     ],
     objects: {
-      W: { id: 'corridor_window', color: 0x1e2a36, label: '窗' },
-      S: { id: 'stairs', color: 0x3a3a3a, label: '楼梯口' },
+      W: { id: 'corridor_window', color: 0x1e2a36, label: '窗', tex: 'window_night', wall: true },
+      S: { id: 'stairs', color: 0x3a3a3a, label: '楼梯口', tex: 'stairs' },
     },
     exits: { '1': { to: 'infirmary', arriveAt: '1' } },
   },
@@ -183,12 +192,12 @@ export const ROOMS: Record<string, RoomDef> = {
       '##################',
     ],
     objects: {
-      K: { id: 'blackboard', color: 0x1f2a24, label: '黑板' },
-      L: { id: 'lectern', color: 0x5a4a3a, spot: 'lectern_drawer', label: '讲台' },
-      W: { id: 'window', color: 0x1e2a36, label: '窗' },
-      r: { id: 'ropes', color: 0x6a604e, label: '绳子' },
+      K: { id: 'blackboard', color: 0x1f2a24, label: '黑板', tex: 'blackboard', wall: true },
+      L: { id: 'lectern', color: 0x5a4a3a, spot: 'lectern_drawer', label: '讲台', tex: 'lectern' },
+      W: { id: 'window', color: 0x1e2a36, label: '窗', tex: 'window_night', wall: true },
+      r: { id: 'ropes', color: 0x6a604e, label: '绳子', tex: 'ropes' },
       d: DESK,
-      D: { id: 'door', color: 0x2c2620, label: '门' },
+      D: { id: 'door', color: 0x2c2620, label: '门', tex: 'class_door', wall: true },
     },
     exits: {},
     spawn: { x: 1, y: 8 },
@@ -212,9 +221,9 @@ export const ROOMS: Record<string, RoomDef> = {
       '##############1###',
     ],
     objects: {
-      K: { id: 'blackboard', color: 0x1f2a24, label: '黑板' },
-      L: { id: 'lectern', color: 0x5a4a3a, label: '讲台' },
-      W: { id: 'window', color: 0x1e2a36, spot: 'window', label: '窗' },
+      K: { id: 'blackboard', color: 0x1f2a24, label: '黑板', tex: 'blackboard', wall: true },
+      L: { id: 'lectern', color: 0x5a4a3a, label: '讲台', tex: 'lectern' },
+      W: { id: 'window', color: 0x1e2a36, spot: 'window', label: '窗', tex: 'window_night', wall: true },
       E: { id: 'member_scene', color: 0x000000, hidden: true },
       d: DESK,
     },
@@ -242,11 +251,11 @@ export const ROOMS: Record<string, RoomDef> = {
       '########1#######',
     ],
     objects: {
-      K: { id: 'blackboard', color: 0x1f2a24, label: '黑板' },
-      C: { id: 'clock', color: 0x7a7468 },
-      T: { id: 'lectern', color: 0x5a4a3a },
-      d: { id: 'exam_desk', color: 0x4a4038 },
-      X: { id: 'own_desk', color: 0x4a4038 },
+      K: { id: 'blackboard', color: 0x1f2a24, label: '黑板', tex: 'blackboard', wall: true },
+      C: { id: 'clock', color: 0x7a7468, tex: 'wall_clock', wall: true },
+      T: { id: 'lectern', color: 0x5a4a3a, tex: 'lectern' },
+      d: { id: 'exam_desk', color: 0x4a4038, tex: 'school_desk_paper' },
+      X: { id: 'own_desk', color: 0x4a4038, tex: 'school_desk_paper' },
     },
     exits: {},
     spawn: { x: 8, y: 8 },
@@ -266,8 +275,8 @@ export const ROOMS: Record<string, RoomDef> = {
       '##########',
     ],
     objects: {
-      I: { id: 'iron_door', color: 0x4a4e52, label: '铁门' },
-      f: { id: 'steps', color: 0x34322e, spot: 'floor' },
+      I: { id: 'iron_door', color: 0x4a4e52, label: '铁门', tex: 'iron_door', wall: true },
+      f: { id: 'steps', color: 0x34322e, spot: 'floor', hidden: true, solid: false },
     },
     exits: { '1': { to: 'corridor2', arriveAt: '1' } },
     spawn: { x: 4, y: 1 },
@@ -286,8 +295,8 @@ export const ROOMS: Record<string, RoomDef> = {
     ],
     objects: {
       c: CLASS_DOOR,
-      n: { id: 'corridor_end', color: 0x2a2a2a, spot: 'corridor_end' },
-      T: { id: 'stairs_down', color: 0x3a3a3a },
+      n: { id: 'corridor_end', color: 0x2a2a2a, spot: 'corridor_end', hidden: true, solid: false },
+      T: { id: 'stairs_down', color: 0x3a3a3a, tex: 'stairs', wall: true },
     },
     exits: { '1': { to: 'stairs2', arriveAt: '1' } },
   },
@@ -304,13 +313,14 @@ export const ROOMS: Record<string, RoomDef> = {
       '#####1######',
     ],
     objects: {
-      t: { id: 'table', color: 0x6a5048, spot: 'table', label: '桌子' },
+      t: { id: 'table', color: 0x6a5048, spot: 'table', label: '桌子', tex: 'office_desk' },
       R: { id: 'member_scene', color: 0x000000, hidden: true },
-      O: { id: 'pipe', color: 0x2a2a2e, label: '' },
+      O: { id: 'pipe', color: 0x2a2a2e, label: '', tex: 'pipe_entrance', wall: true },
     },
     exits: {},
     floorColor: '#3a2a32',
     wallColor: '#2a1820',
+    floorTex: 'floor_pink_room',
   },
 
   // ------------------------------------------------------------ 第七幕
@@ -332,10 +342,10 @@ export const ROOMS: Record<string, RoomDef> = {
       '##################',
     ],
     objects: {
-      P: { id: 'piano', color: 0x101012, label: '钢琴' },
+      P: { id: 'piano', color: 0x101012, label: '钢琴', tex: 'grand_piano' },
       k: { id: 'kanade', color: 0x000000, hidden: true },
-      s: { id: 'chair', color: 0x3a3430 },
-      v: { id: 'vent', color: 0x2a2a2e },
+      s: { id: 'chair', color: 0x3a3430, tex: 'chair' },
+      v: { id: 'vent', color: 0x2a2a2e, tex: 'pipe_entrance', wall: true },
     },
     exits: {},
     spawn: { x: 1, y: 6 },
@@ -355,8 +365,8 @@ export const ROOMS: Record<string, RoomDef> = {
       '######GGGG######',
     ],
     objects: {
-      k: { id: 'shoe_locker', color: 0x4a4440, label: '鞋柜' },
-      G: { id: 'gate', color: 0x5a5248, label: '大门' },
+      k: { id: 'shoe_locker', color: 0x4a4440, label: '鞋柜', tex: 'shoe_locker' },
+      G: { id: 'gate', color: 0x5a5248, label: '大门', tex: 'school_gate', wall: true },
     },
     exits: {},
     spawn: { x: 8, y: 1 },

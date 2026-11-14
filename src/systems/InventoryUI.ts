@@ -5,6 +5,7 @@ import { getMaterial, hintLevel, isSupplementary, materialsOfTheme, themeStars }
 import { tUi, tUiList } from '../core/text';
 import { THEMES, type ThemeId } from '../core/types';
 import type { Modal, UiAction } from './Modal';
+import { tex } from './sprites';
 import { COLORS, panel, textStyle } from './style';
 
 const W = 1000;
@@ -112,7 +113,10 @@ export class InventoryUI implements Modal {
     const px = LIST_X + 300;
     // 图片占位：之后替换成 assets/ui/materials/<id>.png
     const frame = this.scene.add.rectangle(px, Y + 84, 300, 220, 0x1a1a20).setOrigin(0).setStrokeStyle(1, COLORS.panelBorder);
-    const ph = this.scene.add.text(px + 150, Y + 194, m.name, textStyle(18, COLORS.textDim)).setOrigin(0.5);
+    const matKey = tex('mat', m.id);
+    const ph = this.scene.textures.exists(matKey)
+      ? this.scene.add.image(px + 150, Y + 194, matKey).setDisplaySize(298, 218)
+      : this.scene.add.text(px + 150, Y + 194, m.name, textStyle(18, COLORS.textDim)).setOrigin(0.5);
     const desc = this.scene.add.text(px, Y + 324, m.desc || '　', textStyle(20, COLORS.text, { wordWrap: { width: 300, useAdvancedWrap: true }, lineSpacing: 6 }));
     this.dynamic.add([frame, ph, desc]);
   }

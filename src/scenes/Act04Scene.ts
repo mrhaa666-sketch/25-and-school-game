@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { CHASE, GAME_HEIGHT, GAME_WIDTH, SANITY_COST, TIMERS } from '../core/constants';
 import { GameState } from '../core/GameState';
-import { ashBurst, makeFigure, makeMonster, PALETTE } from '../systems/figures';
+import { ashBurst, makeFigure, makeMonsterById, PALETTE } from '../systems/figures';
 import { actKey, startAct, triggerEnding } from './flow';
-import { drawMemberScene } from './memberScenes';
+import { drawMemberScene, hasMemberOverlay, showMemberOverlay } from './memberScenes';
 import { type Actor, RoomScene } from './RoomScene';
 import type { RoomObject } from './rooms';
 
@@ -70,8 +70,11 @@ export class Act04Scene extends RoomScene {
       // 看到成员场景，站着不动
       this.facing = 'right';
       this.syncPlayer();
+      const id = GameState.cycleDef.scenes.floor3;
+      const close = hasMemberOverlay(this, id) ? showMemberOverlay(this, id) : null;
       await this.wait(2200);
       await this.say(this.t('member'));
+      await close?.();
       // 楼上传来嘶吼，窗外的绳子绷紧，怪物正在往下爬
       this.cameras.main.shake(400, 0.006);
       this.startDescent();
@@ -85,7 +88,7 @@ export class Act04Scene extends RoomScene {
     const x = this.originX - 18;
     this.ropeLine = this.add.line(0, 0, x, 0, x, w.y + 20, 0xb8ab90).setOrigin(0).setLineWidth(2).setDepth(80);
     const m = GameState.cycleDef.monsterA;
-    this.descending = makeMonster(this, x, -20, Phaser.Display.Color.HexStringToColor(m.color).color, m.name, 0.8).setDepth(81);
+    this.descending = makeMonsterById(this, x, -20, m.id, Phaser.Display.Color.HexStringToColor(m.color).color, m.name, 0.8).setDepth(81);
     // 慢慢往下，停在窗口上方。剪断之前它不会下来，但一直在那里
     this.tweens.add({ targets: this.descending, y: w.y - 50, duration: 14000, ease: 'Sine.easeOut' });
   }
@@ -116,6 +119,14 @@ export class Act04Scene extends RoomScene {
         if (!this.memberSeen) {
           this.memberSeen = true;
           GameState.deductSanity(SANITY_COST.floor3Scene, 'floor3');
+        }
+        {
+          const id = GameState.cycleDef.scenes.floor3;
+          if (hasMemberOverlay(this, id)) {
+            const close = showMemberOverlay(this, id);
+            this.ui.say(this.t('member_investigate'), () => void close());
+            return;
+          }
         }
         return this.ui.say(this.t('member_investigate'));
       case 'desk':
@@ -220,7 +231,7 @@ export class Act04Scene extends RoomScene {
         obj = makeFigure(this, 0, 0, variants[i % variants.length]);
         obj.add(this.add.arc(0, -32, 5, 20, 160, false, 0, 0).setStrokeStyle(1.5, 0x111111));
       } else {
-        obj = makeMonster(this, 0, 0, color, i === 0 ? def.name : '', 0.85);
+        obj = makeMonsterById(this, 0, 0, def.id, color, i === 0 ? def.name : '', 0.85);
       }
       const a = this.addActor(obj, x - i * 18, y + (i % 3) * 10, CHASE.chase2Speed * Phaser.Math.FloatBetween(0.94, 1.04), 0, 0);
       this.swarm.push({ a, dy: ((i % 3) - 1) * 26 });

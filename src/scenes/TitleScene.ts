@@ -21,6 +21,12 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor('#000000').fadeIn(800);
+    if (this.textures.exists('bg:title')) {
+      this.add.image(0, 0, 'bg:title').setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setTint(0x9a9a9a);
+      // 下方压暗，放菜单
+      const shade = this.add.graphics();
+      shade.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0, 0, 0.85, 0.85).fillRect(0, GAME_HEIGHT * 0.35, GAME_WIDTH, GAME_HEIGHT * 0.65);
+    }
     this.save = GameState.peekSave();
     this.view = 'main';
     this.cursor = this.save ? 1 : 0;

@@ -6,7 +6,7 @@ import { tHas, tLines, tStory, tUi } from '../core/text';
 import type { MaterialDef } from '../core/types';
 import { makeFigure, PALETTE } from '../systems/figures';
 import { MafuyuSprite, PLAYER_HEIGHT } from '../systems/playerSprite';
-import { MAFUYU_STAND_REF, poseImage } from '../systems/sprites';
+import { fitImage, MAFUYU_STAND_REF, poseImage, tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 import { createCameraFx } from '../systems/VisualFilter';
 import { SCENE } from './flow';
@@ -69,6 +69,10 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private transitioning = false;
   private visited = new Set<string>();
   private lightTimers: Phaser.Time.TimerEvent[] = [];
+  /** 不在 roomLayer 里、换房间时要销毁的东西（贴图和遮罩） */
+  private roomExtras: Phaser.GameObjects.GameObject[] = [];
+  /** 物件字母 → 画出来的图（演出里可以换图、隐藏） */
+  protected objectImages = new Map<string, Phaser.GameObjects.Image[]>();
   /** 补充周目第 3 次提示：已经「看过一眼」的楼层 */
   private lookedFloors = new Set<number>();
   /** 停下来看的剩余时间（毫秒），期间不能移动 */
@@ -94,6 +98,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.lookedFloors = new Set();
     this.lookMs = 0;
     this.lightTimers = [];
+    this.roomExtras = [];
     this.stamina = MOVE.staminaMax;
     this.facing = 'down';
 
@@ -227,6 +232,15 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const env = GameState.cycleDef.environment;
     const floor = Phaser.Display.Color.HexStringToColor(def.floorColor ?? env.floorColor).color;
     const wall = Phaser.Display.Color.HexStringToColor(def.wallColor ?? env.wallColor).color;
+    this.roomExtras.forEach((o) => o.destroy());
+    this.roomExtras = [];
+    this.objectImages = new Map();
+    const floorKey = tex('tile', def.floorTex ?? this.cycleFloorTex());
+    const wallKey = tex('tile', def.wallTex ?? this.cycleWallTex());
+    const texturedFloor = this.textures.exists(floorKey);
+    const texturedWall = this.textures.exists(wallKey);
+    const floorMask = this.make.graphics({}, false);
+    const wallMask = this.make.graphics({}, false);
     const g = this.add.graphics();
     this.roomLayer.add(g);
 
@@ -237,12 +251,16 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         const px = this.originX + x * TILE;
         const py = this.originY + y * TILE;
         if (ch === '#') {
-          g.fillStyle(wall, 1).fillRect(px, py, TILE, TILE);
-          g.fillStyle(0xffffff, 0.04).fillRect(px, py + TILE - 6, TILE, 6);
+          if (texturedWall) wallMask.fillRect(px, py, TILE, TILE);
+          else g.fillStyle(wall, 1).fillRect(px, py, TILE, TILE);
+          g.fillStyle(0x000000, 0.35).fillRect(px, py + TILE - 5, TILE, 5); // 墙根的阴影
           return;
         }
-        g.fillStyle(floor, 1).fillRect(px, py, TILE, TILE);
-        g.lineStyle(1, 0x000000, 0.18).strokeRect(px, py, TILE, TILE);
+        if (texturedFloor) floorMask.fillRect(px, py, TILE, TILE);
+        else {
+          g.fillStyle(floor, 1).fillRect(px, py, TILE, TILE);
+          g.lineStyle(1, 0x000000, 0.18).strokeRect(px, py, TILE, TILE);
+        }
         if (/[0-9]/.test(ch)) {
           g.fillStyle(0x000000, 0.55).fillRect(px + 4, py + 4, TILE - 8, TILE - 8);
           return;
@@ -251,17 +269,47 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       });
     });
 
-    // 同一字母可能分散在多处（例如走廊的几扇窗），按连通区域分别画成一整块
+    // 地板 / 墙面贴图：整片平铺，再用遮罩只露出对应的格子
+    const tiled = (key: string, mask: Phaser.GameObjects.Graphics, scale: number, tint: number, depth: number) => {
+      const ts = this.add.tileSprite(this.originX, this.originY, worldW, worldH, key).setOrigin(0).setDepth(depth);
+      ts.setTileScale(scale).setTint(tint).setMask(mask.createGeometryMask());
+      this.roomExtras.push(ts, mask);
+    };
+    if (texturedFloor) tiled(floorKey, floorMask, (TILE * 4) / 512, 0xb0b0b0, -20);
+    else floorMask.destroy();
+    if (texturedWall) tiled(wallKey, wallMask, (TILE * 2) / 512, 0x707070, -19);
+    else wallMask.destroy();
+
+    // 物件：有图用图，没图画色块。同一字母可能分散在多处（例如走廊的几扇窗），按连通区域分别画
     for (const comp of this.components(def, [...letters])) {
       const obj = def.objects[comp.ch];
       if (obj.hidden) continue;
-      const x = this.originX + comp.x0 * TILE + 3;
-      const y = this.originY + comp.y0 * TILE + 3;
-      const cw = (comp.x1 - comp.x0 + 1) * TILE - 6;
-      const chh = (comp.y1 - comp.y0 + 1) * TILE - 6;
-      g.fillStyle(obj.color, 1).fillRect(x, y, cw, chh);
-      g.lineStyle(1, 0x000000, 0.4).strokeRect(x, y, cw, chh);
-      if (obj.label && cw >= TILE * 2 - 6) {
+      const x = this.originX + comp.x0 * TILE;
+      const y = this.originY + comp.y0 * TILE;
+      const cw = (comp.x1 - comp.x0 + 1) * TILE;
+      const chh = (comp.y1 - comp.y0 + 1) * TILE;
+      const img = obj.tex
+        ? fitImage(
+            this,
+            tex('obj', obj.tex),
+            obj.wall
+              ? this.isSolid(this.charAt(comp.x0, comp.y0 - 1)) || comp.y0 === 0
+                ? { x, y: y - TILE * 1.2, w: cw, h: chh + TILE * 1.2 } // 上墙 / 侧墙：向上多占一点
+                : { x, y, w: cw, h: chh } // 下墙：上方是地板，不往上画
+              : { x: x - cw * 0.08, y: y - chh * 0.35, w: cw * 1.16, h: chh * 1.35 + 4 },
+          )
+        : null;
+      if (img) {
+        img.setTint(0xc8c8c8);
+        this.roomLayer.add(img);
+        const list = this.objectImages.get(comp.ch) ?? [];
+        list.push(img);
+        this.objectImages.set(comp.ch, list);
+        continue;
+      }
+      g.fillStyle(obj.color, 1).fillRect(x + 3, y + 3, cw - 6, chh - 6);
+      g.lineStyle(1, 0x000000, 0.4).strokeRect(x + 3, y + 3, cw - 6, chh - 6);
+      if (obj.label && cw >= TILE * 2) {
         this.roomLayer.add(this.add.text(x + cw / 2, y + chh / 2, obj.label, textStyle(13, '#00000099')).setOrigin(0.5));
       }
     }
@@ -351,6 +399,17 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.facing = Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
     this.syncPlayer();
     this.lookMs = 1000;
+  }
+
+  /** 当前周目的地板 / 墙面贴图 */
+  private cycleFloorTex(): string {
+    const c = GameState.save.cycle;
+    return { 1: 'floor_school', 2: 'floor_school_ena', 3: 'floor_school_mizuki', 4: 'floor_school_kanade', final: 'floor_final' }[c];
+  }
+
+  private cycleWallTex(): string {
+    const c = GameState.save.cycle;
+    return c === 2 ? 'wall_school_ena' : c === 3 ? 'wall_school_mizuki' : 'wall_school';
   }
 
   protected placePlayer(tx: number, ty: number): void {
