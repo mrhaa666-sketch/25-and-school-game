@@ -139,3 +139,9 @@ export function makeMonsterById(
   scene.tweens.add({ targets: img, angle: { from: -2, to: 2 }, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   return c;
 }
+
+/** 第三幕拽绳 / 第四幕顺绳下降时，怪物换成的样子（交接文档 4.2 绳子事件） */
+export const ROPE_VARIANT: Record<string, string> = {
+  moving_door: 'moving_door_folded', // 门板折叠、卷起来缠住绳子
+  piano: 'piano_strings', // 把琴弦吐出来缠住绳子
+};

@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, MOVE, TILE } from '../core/constants';
+import { GAME_HEIGHT, GAME_WIDTH, MOVE, SANITY_COST, TILE } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { hintLevel, hintRooms, MATERIALS, sanityTier } from '../core/progress';
 import { tHas, tLines, tStory, tUi } from '../core/text';
 import type { MaterialDef } from '../core/types';
 import { makeFigure, PALETTE } from '../systems/figures';
 import { MafuyuSprite, PLAYER_HEIGHT } from '../systems/playerSprite';
-import { fitImage, MAFUYU_STAND_REF, poseImage, tex } from '../systems/sprites';
+import { cropImage, fitImage, MAFUYU_STAND_REF, PORTRAIT_CROP, poseImage, tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 import { createCameraFx } from '../systems/VisualFilter';
 import { SCENE } from './flow';
@@ -77,6 +77,12 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private lookedFloors = new Set<number>();
   /** 停下来看的剩余时间（毫秒），期间不能移动 */
   private lookMs = 0;
+  /** 各周目一次性扣除的记录（人像、粉色门……），一幕内有效 */
+  private cycleTouched = new Set<string>();
+  private voiceTimer = 0;
+  private beatAcc = 0;
+  private beatShade?: Phaser.GameObjects.Rectangle;
+  private lingerFloor1 = 0;
 
   protected abstract onObject(obj: RoomObject, tile: { x: number; y: number }): void;
   protected onEnterRoom(_roomId: string, _firstTime: boolean): void {}
@@ -97,6 +103,10 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.visited = new Set();
     this.lookedFloors = new Set();
     this.lookMs = 0;
+    this.cycleTouched = new Set();
+    this.voiceTimer = 0;
+    this.beatAcc = 0;
+    this.lingerFloor1 = 0;
     this.lightTimers = [];
     this.roomExtras = [];
     this.stamina = MOVE.staminaMax;
@@ -117,6 +127,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       this.player.add(eye);
     }
     this.staminaBar = this.add.graphics().setDepth(500).setScrollFactor(0);
+    // 四周目节拍器：随节拍整体压暗一下
+    this.beatShade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1).setOrigin(0).setScrollFactor(0).setDepth(450).setAlpha(0);
     this.cameras.main.setBackgroundColor('#000000');
   }
 
@@ -127,7 +139,96 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const tile = this.worldToTile(probe.x, probe.y);
     const ch = this.charAt(tile.x, tile.y);
     const obj = this.room.objects[ch];
-    if (obj) this.onObject(obj, tile);
+    if (!obj) return;
+    if (this.onCycleObject(obj, tile)) return;
+    this.onObject(obj, tile);
+  }
+
+  // ------------------------------------------------------------ 各周目的环境（交接文档 4.1 / 2.1.1）
+
+  /** 物件在当前周目的样子：素材名、'portrait'（二周目的人像），或 null（画色块） */
+  private cycleLook(obj: RoomObject): string | 'portrait' | null {
+    const c = GameState.save.cycle;
+    if (c === 2 && obj.id === 'corridor_window') return 'portrait'; // 墙上挂满没画完的人像
+    if (c === 3 && (obj.id === 'class_door' || obj.id === 'burst_door')) return 'pink_door'; // 所有教室门变成粉色
+    return obj.tex ?? null;
+  }
+
+  /** 各周目通用的调查。返回 true 表示已处理 */
+  private onCycleObject(obj: RoomObject, tile: { x: number; y: number }): boolean {
+    const c = GameState.save.cycle;
+    const key = `${this.room.id}:${tile.x}:${tile.y}`;
+    if (c === 2 && obj.id === 'corridor_window') {
+      // 调查墙上被涂掉脸的人像：每幅 -2
+      if (!this.cycleTouched.has(key)) {
+        this.cycleTouched.add(key);
+        GameState.deductSanity(SANITY_COST.facelessPortrait, 'portrait');
+      }
+      this.ui.say(this.text('cycle.portrait'));
+      return true;
+    }
+    if (c === 3 && obj.id === 'class_door') {
+      // 尝试打开锁着的粉色门：-2
+      GameState.deductSanity(SANITY_COST.pinkDoorTry, 'pink-door');
+      this.ui.say(this.text('cycle.pink_door_locked'));
+      return true;
+    }
+    return false;
+  }
+
+  /** 每帧：三周目门后的说话声、四周目的节拍器 */
+  private updateCycleAmbience(time: number, delta: number): void {
+    const c = GameState.save.cycle;
+    if (c === 3) this.updatePinkDoorVoices(delta);
+    if (c === 4) this.updateMetronome(time, delta);
+  }
+
+  /** 三周目：门后有听不清的说话声，靠近就停。贴近时说话声停下的瞬间 -3（每扇门一次） */
+  private updatePinkDoorVoices(delta: number): void {
+    this.voiceTimer -= delta;
+    for (const [ch, imgs] of this.objectImages) {
+      if (this.room.objects[ch]?.id !== 'class_door') continue;
+      for (const img of imgs) {
+        const key = `${this.room.id}:${Math.round(img.x)}`;
+        const d = Phaser.Math.Distance.Between(img.x, img.y, this.pos.x, this.pos.y);
+        if (d < 70) {
+          if (!this.cycleTouched.has(key)) {
+            this.cycleTouched.add(key);
+            this.cameras.main.shake(80, 0.002);
+            GameState.deductSanity(SANITY_COST.pinkDoorVoice, 'pink-door-voice');
+          }
+        } else if (d < 260 && this.voiceTimer <= 0 && !this.cycleTouched.has(key)) {
+          const t = this.add
+            .text(img.x + Phaser.Math.Between(-14, 14), img.y - 46, Phaser.Utils.Array.GetRandom(['……', '…………', '（……）']), textStyle(12, '#8a7a80'))
+            .setOrigin(0.5)
+            .setDepth(130)
+            .setAlpha(0);
+          this.tweens.chain({ targets: t, tweens: [{ alpha: 0.8, duration: 500 }, { alpha: 0, duration: 900, delay: 500 }], onComplete: () => t.destroy() });
+        }
+      }
+    }
+    if (this.voiceTimer <= 0) this.voiceTimer = Phaser.Math.Between(900, 1700);
+  }
+
+  /** 四周目：全程节拍器，越往下层越快；走廊灯随节拍明灭。在一楼停留每 5 秒 -2 */
+  private updateMetronome(_time: number, delta: number): void {
+    const bpm = { 4: 60, 3: 80, 2: 104, 1: 136 }[this.room.floor ?? 0] ?? 90;
+    this.beatAcc += delta;
+    const beatMs = 60000 / bpm;
+    if (this.beatAcc >= beatMs) {
+      this.beatAcc -= beatMs;
+      this.beatShade?.setAlpha(0.22);
+      this.tweens.add({ targets: this.beatShade, alpha: 0, duration: beatMs * 0.6 });
+      const tick = this.add.text(GAME_WIDTH - 40, 60, '◆', textStyle(12, '#4a4a52')).setScrollFactor(0).setDepth(460);
+      this.tweens.add({ targets: tick, alpha: 0, duration: beatMs * 0.8, onComplete: () => tick.destroy() });
+    }
+    if (this.room.floor === 1 && !this.locked) {
+      this.lingerFloor1 += delta;
+      if (this.lingerFloor1 >= 5000) {
+        this.lingerFloor1 -= 5000;
+        GameState.deductSanity(SANITY_COST.metronomeLinger, 'metronome');
+      }
+    }
   }
 
   allowMenus(): boolean {
@@ -288,10 +389,13 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const y = this.originY + comp.y0 * TILE;
       const cw = (comp.x1 - comp.x0 + 1) * TILE;
       const chh = (comp.y1 - comp.y0 + 1) * TILE;
-      const img = obj.tex
+      const look = this.cycleLook(obj);
+      const img = look === 'portrait'
+        ? cropImage(this, tex('tile', 'wall_school_ena'), PORTRAIT_CROP, { x: x + 4, y: y - TILE * 0.9, w: cw - 8, h: chh + TILE * 0.9 })
+        : look
         ? fitImage(
             this,
-            tex('obj', obj.tex),
+            tex('obj', look),
             obj.wall
               ? this.isSolid(this.charAt(comp.x0, comp.y0 - 1)) || comp.y0 === 0
                 ? { x, y: y - TILE * 1.2, w: cw, h: chh + TILE * 1.2 } // 上墙 / 侧墙：向上多占一点
@@ -646,6 +750,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.drawStamina();
     this.mafuyu?.update(this.facing, this.moving || this.autoWalking, delta);
     this.updateGhost(delta);
+    this.updateCycleAmbience(time, delta);
     this.onUpdate(time, delta);
   }
 

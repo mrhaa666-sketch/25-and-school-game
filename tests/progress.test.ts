@@ -51,7 +51,7 @@ describe('补充周目提示', () => {
     const mats = without('ena_comment');
     expect(P.hintRooms(at({ cycle: 2, cycleCount: 2, materials: mats })).size).toBe(0);
     const supp = at({ cycle: 2, cycleCount: 5, materials: mats, replayCount: { 1: 0, 2: 1, 3: 0, 4: 0 } });
-    expect([...P.hintRooms(supp)]).toEqual(['corridor3']);
+    expect([...P.hintRooms(supp)]).toEqual(['corridor3_long']);
     expect(P.hintLevel(supp)).toBe(1);
     expect(P.hintLevel({ ...supp, replayCount: { 1: 0, 2: 5, 3: 0, 4: 0 } })).toBe(3);
     expect(P.hintRooms(at({ cycle: 'final', cycleCount: 6, materials: mats })).size).toBe(0);

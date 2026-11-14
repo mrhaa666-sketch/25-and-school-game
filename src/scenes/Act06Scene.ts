@@ -68,9 +68,22 @@ export class Act06Scene extends RoomScene {
 
   protected onEnterRoom(roomId: string): void {
     if (roomId === 'pink_room2') {
-      const p = this.objectCenter('R');
-      this.roomLayer.add(drawMemberScene(this, GameState.cycleDef.scenes.floor2, p.x, p.y + 10));
+      const id = GameState.cycleDef.scenes.floor2;
+      if (this.mirrorPipe()) {
+        // 三、四周目：房间里没有人。衣服叠在椅子上，镜子被布盖着，管道在镜子后面
+        this.objectImages.get('O')?.forEach((i) => i.setVisible(false));
+        const o = this.objectCenter('O');
+        this.roomLayer.add(drawMemberScene(this, id, o.x - 46, o.y + 22, 110));
+      } else {
+        const p = this.objectCenter('R');
+        this.roomLayer.add(drawMemberScene(this, id, p.x, p.y + 10));
+      }
     }
+  }
+
+  /** 管道在被布盖着的镜子后面（成员场景是「叠好的衣服」的周目） */
+  private mirrorPipe(): boolean {
+    return GameState.cycleDef.scenes.floor2 === 'folded_clothes';
   }
 
   protected onUpdate(): void {
@@ -110,6 +123,7 @@ export class Act06Scene extends RoomScene {
         void this.enterPinkRoom();
         return;
       case 'member_scene':
+        if (this.mirrorPipe()) return this.ui.say(this.t('empty_floor'));
         if (!this.memberSeen) {
           this.memberSeen = true;
           GameState.deductSanity(SANITY_COST.floor2Scene, 'floor2');
@@ -119,6 +133,14 @@ export class Act06Scene extends RoomScene {
         return this.ui.say(this.t('table'));
       case 'pipe':
         void this.cutscene(async () => {
+          if (this.mirrorPipe()) {
+            // 调查衣服和镜子也算看了成员场景
+            if (!this.memberSeen) {
+              this.memberSeen = true;
+              GameState.deductSanity(SANITY_COST.floor2Scene, 'floor2');
+            }
+            await this.say(this.t('mirror_cloth'));
+          }
           await this.say(this.t('pipe'));
           this.player.setVisible(false);
           startAct(this, 7);
@@ -130,7 +152,12 @@ export class Act06Scene extends RoomScene {
   private async enterPinkRoom(): Promise<void> {
     await this.cutscene(async () => {
       await this.say(this.t('pink_door'));
-      this.loadRoom('pink_room2', '1');
+      this.loadRoom(
+        this.mirrorPipe()
+          ? { ...ROOMS.pink_room2, map: ROOMS.pink_room2.map.map((r) => r.replace(/R/g, '.')) } // 房间中央没有人
+          : 'pink_room2',
+        '1',
+      );
       this.facing = 'up';
       this.syncPlayer();
       // 进入房间时精神值 ≤ 25 → 结局 6

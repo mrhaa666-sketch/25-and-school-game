@@ -159,9 +159,9 @@ export const ROOMS: Record<string, RoomDef> = {
   corridor4: {
     id: 'corridor4',
     floor: 4,
-    doors: { '1': 'infirmary', '2': 'classroom4' },
+    doors: { '1': 'infirmary', '2': 'classroom4', '3': 'art_prep4', '4': 'locked_class4', '5': 'music_prep4' },
     map: [
-      '##2#W######1####W#######W#####SS',
+      '##2#W##3###1##4#W###5###W#####SS',
       '#.............................SS',
       '#.............................SS',
       '#.............................SS',
@@ -171,7 +171,72 @@ export const ROOMS: Record<string, RoomDef> = {
       W: { id: 'corridor_window', color: 0x1e2a36, label: '窗', tex: 'window_night', wall: true },
       S: { id: 'stairs', color: 0x3a3a3a, label: '楼梯口', tex: 'stairs' },
     },
-    exits: { '1': { to: 'infirmary', arriveAt: '1' } },
+    // 3/4/5 是只在对应周目能进的房间，由第二幕的场景判断能不能进
+    exits: {
+      '1': { to: 'infirmary', arriveAt: '1' },
+      '3': { to: 'art_prep4', arriveAt: '1' },
+      '4': { to: 'locked_class4', arriveAt: '1' },
+      '5': { to: 'music_prep4', arriveAt: '1' },
+    },
+  },
+
+  // ------------------------------------------------------------ 四楼的限定房间（M4）
+  art_prep4: {
+    id: 'art_prep4',
+    floor: 4,
+    doors: { '1': 'corridor4' },
+    map: [
+      '############',
+      '#ee..ee..ee#',
+      '#..........#',
+      '#....tt....#',
+      '#..........#',
+      '#####1######',
+    ],
+    objects: {
+      e: { id: 'easel', color: 0x4a4440, tex: 'easel_portraits' },
+      t: { id: 'prep_desk', color: 0x5a4a3a, spot: 'desk', tex: 'office_desk' },
+    },
+    exits: { '1': { to: 'corridor4', arriveAt: '3' } },
+  },
+
+  locked_class4: {
+    id: 'locked_class4',
+    floor: 4,
+    doors: { '1': 'corridor4' },
+    map: [
+      '####KKKK####',
+      '#..........#',
+      '#.d.d..d.d.#',
+      '#....tt....#',
+      '#.d.d..d.d.#',
+      '#####1######',
+    ],
+    objects: {
+      K: { id: 'blackboard', color: 0x1f2a24, tex: 'blackboard', wall: true },
+      d: DESK,
+      t: { id: 'prep_desk', color: 0x5a4a3a, spot: 'desk', tex: 'school_desk' },
+    },
+    exits: { '1': { to: 'corridor4', arriveAt: '4' } },
+  },
+
+  music_prep4: {
+    id: 'music_prep4',
+    floor: 4,
+    doors: { '1': 'corridor4' },
+    map: [
+      '############',
+      '#ll......ll#',
+      '#..........#',
+      '#....tt....#',
+      '#..........#',
+      '#####1######',
+    ],
+    objects: {
+      l: { id: 'shelf', color: 0x4a4440, tex: 'locker' },
+      t: { id: 'prep_desk', color: 0x5a4a3a, spot: 'desk', tex: 'office_desk' },
+    },
+    exits: { '1': { to: 'corridor4', arriveAt: '5' } },
   },
 
   // ------------------------------------------------------------ 第三幕
@@ -217,10 +282,11 @@ export const ROOMS: Record<string, RoomDef> = {
       '#..d.d.....d.d...#',
       '#................#',
       '#..d.d.d.d.d.d...#',
-      '#................#',
+      '#..............oo#',
       '##############1###',
     ],
     objects: {
+      o: { id: 'locker3', color: 0x4a4e52, spot: 'locker', tex: 'locker' },
       K: { id: 'blackboard', color: 0x1f2a24, label: '黑板', tex: 'blackboard', wall: true },
       L: { id: 'lectern', color: 0x5a4a3a, label: '讲台', tex: 'lectern' },
       W: { id: 'window', color: 0x1e2a36, spot: 'window', label: '窗', tex: 'window_night', wall: true },

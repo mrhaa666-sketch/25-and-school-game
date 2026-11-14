@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GameState } from '../core/GameState';
 import { runClimb } from '../systems/ClimbGame';
+import { ROPE_VARIANT } from '../systems/figures';
 import { runKnotQTE } from '../systems/KnotQTE';
 import { textStyle } from '../systems/style';
 import { actKey, startAct, triggerEnding } from './flow';
@@ -111,7 +112,7 @@ export class Act03Scene extends RoomScene {
       await this.say(this.t('climb_start'));
       const m = GameState.cycleDef.monsterA;
       const climbed = await runClimb(this, {
-        monsterId: m.id,
+        monsterId: ROPE_VARIANT[m.id] ?? m.id,
         monsterColor: Phaser.Display.Color.HexStringToColor(m.color).color,
         monsterName: m.name,
         hint: this.textOne('act03.climb_hint'),

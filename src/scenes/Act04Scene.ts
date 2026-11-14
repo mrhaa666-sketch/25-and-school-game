@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
-import { CHASE, GAME_HEIGHT, GAME_WIDTH, SANITY_COST, TIMERS } from '../core/constants';
+import { CHASE, GAME_HEIGHT, GAME_WIDTH, SANITY_COST, TILE, TIMERS } from '../core/constants';
 import { GameState } from '../core/GameState';
-import { ashBurst, makeFigure, makeMonsterById, PALETTE } from '../systems/figures';
+import { hintLevel } from '../core/progress';
+import { ashBurst, makeFigure, makeMonsterById, PALETTE, ROPE_VARIANT } from '../systems/figures';
+import { fitImage, tex } from '../systems/sprites';
 import { actKey, startAct, triggerEnding } from './flow';
 import { drawMemberScene, hasMemberOverlay, showMemberOverlay } from './memberScenes';
 import { type Actor, RoomScene } from './RoomScene';
@@ -23,6 +25,10 @@ export class Act04Scene extends RoomScene {
   private memberSeen = false;
   private lingerMs = 0;
   private descending?: Phaser.GameObjects.Container;
+  private descentTween?: Phaser.Tweens.Tween;
+  /** 四周目：被乐谱割伤的时间（3 次在 4 秒内 → 被追上） */
+  private cuts: number[] = [];
+  private trash?: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
   private ropeLine?: Phaser.GameObjects.Line;
   // 追逐战 2
   private chase: 'none' | 'intro' | 'running' | 'done' = 'none';
@@ -44,6 +50,9 @@ export class Act04Scene extends RoomScene {
     super.create();
     Object.assign(this, { hasScissors: false, ropeCut: false, memberSeen: false, lingerMs: 0, chase: 'none', swarm: [], elapsed: 0, nearAcc: 0, examDoorX: null });
     this.descending = undefined;
+    this.descentTween = undefined;
+    this.cuts = [];
+    this.trash = undefined;
     this.ropeLine = undefined;
     this.loadRoom('classroom3');
     this.facing = 'right';
@@ -88,15 +97,21 @@ export class Act04Scene extends RoomScene {
     const x = this.originX - 18;
     this.ropeLine = this.add.line(0, 0, x, 0, x, w.y + 20, 0xb8ab90).setOrigin(0).setLineWidth(2).setDepth(80);
     const m = GameState.cycleDef.monsterA;
-    this.descending = makeMonsterById(this, x, -20, m.id, Phaser.Display.Color.HexStringToColor(m.color).color, m.name, 0.8).setDepth(81);
+    this.descending = makeMonsterById(this, x, -20, ROPE_VARIANT[m.id] ?? m.id, Phaser.Display.Color.HexStringToColor(m.color).color, m.name, 0.8).setDepth(81);
     // 慢慢往下，停在窗口上方。剪断之前它不会下来，但一直在那里
-    this.tweens.add({ targets: this.descending, y: w.y - 50, duration: 14000, ease: 'Sine.easeOut' });
+    this.descentTween = this.tweens.add({ targets: this.descending, y: w.y - 50, duration: 14000, ease: 'Sine.easeOut' });
   }
 
   // ------------------------------------------------------------ 调查
 
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
+      case 'locker3': {
+        // 三楼储物柜：只在三周目能打开（日记本）
+        const m = this.materialAtSpot(obj.spot);
+        if (m) return void this.pickup(m, this.t('locker_material'));
+        return this.ui.say(this.t(GameState.save.cycle === 3 ? 'locker_empty' : 'locker_locked'));
+      }
       case 'lectern':
         if (!this.hasScissors) {
           this.hasScissors = true;
@@ -145,13 +160,38 @@ export class Act04Scene extends RoomScene {
       this.tweens.killTweensOf(this.descending!);
       const fallY = GAME_HEIGHT + 80;
       this.ropeLine?.destroy();
+      this.canvasBleeds();
       await this.tween({ targets: this.descending, y: fallY, duration: 700, ease: 'Cubic.easeIn' });
-      this.cameras.main.shake(200, 0.006);
-      ashBurst(this, this.descending!.x, GAME_HEIGHT - 20);
+      const ai = GameState.cycleDef.monsterA.ai;
+      const x = this.descending!.x;
+      if (ai === 'statue') this.chunks(x, GAME_HEIGHT - 20, 0xd8d4cc); // 碎成石膏块，再化成灰
+      if (ai === 'piano') this.cameras.main.flash(120, 90, 90, 90); // 琴弦乱响一声
+      this.cameras.main.shake(ai === 'piano' ? 380 : 200, ai === 'piano' ? 0.012 : 0.006);
+      this.time.delayedCall(ai === 'statue' ? 500 : 0, () => ashBurst(this, x, GAME_HEIGHT - 20));
       this.descending?.destroy();
       await this.wait(800);
+      await this.say(this.t('fall'));
       await this.say(this.t('after_cut'));
     });
+  }
+
+  /** 二~四周目：剪断时，画布上的颜料往下流 */
+  private canvasBleeds(): void {
+    if (GameState.cycleDef.scenes.floor3 !== 'canvas_ena') return;
+    const img = this.roomLayer.list
+      .filter((o): o is Phaser.GameObjects.Container => o instanceof Phaser.GameObjects.Container && o.name === 'floor3_canvas')
+      .map((c) => c.list[0])[0];
+    if (img instanceof Phaser.GameObjects.Image && this.textures.exists(tex('scn', 'floor3_canvas_cut'))) {
+      img.setTexture(tex('scn', 'floor3_canvas_cut'));
+      this.tweens.add({ targets: img, scaleY: img.scaleY * 1.03, y: img.y + 2, duration: 2400, ease: 'Sine.easeOut' });
+    }
+  }
+
+  private chunks(x: number, y: number, color: number): void {
+    for (let i = 0; i < 12; i++) {
+      const p = this.add.rectangle(x, y - 20, Phaser.Math.Between(4, 9), Phaser.Math.Between(4, 9), color).setDepth(150);
+      this.tweens.add({ targets: p, x: x + Phaser.Math.Between(-60, 60), y: y + Phaser.Math.Between(-30, 20), angle: Phaser.Math.Between(-90, 90), alpha: 0, duration: 900, onComplete: () => p.destroy() });
+    }
   }
 
   protected onExit(ch: string): boolean {
@@ -175,6 +215,12 @@ export class Act04Scene extends RoomScene {
   // ------------------------------------------------------------ 停留扣除 / 追逐
 
   protected onUpdate(_time: number, delta: number): void {
+    if (this.room.id === 'classroom3' && this.descentTween && !this.ropeCut && GameState.cycleDef.monsterA.ai === 'statue') {
+      // 石膏像：真冬看着窗口（面朝左）时停住，移开视线才继续往下爬
+      const watching = this.facing === 'left';
+      if (watching && this.descentTween.isPlaying()) this.descentTween.pause();
+      if (!watching && this.descentTween.isPaused()) this.descentTween.resume();
+    }
     if (this.room.id === 'classroom3') {
       const p = this.memberPos();
       if (Phaser.Math.Distance.Between(p.x, p.y, this.pos.x, this.pos.y) < LINGER_DIST && !this.locked) {
@@ -244,12 +290,19 @@ export class Act04Scene extends RoomScene {
     const top = this.tileCenter(0, 1).y + 4;
     const bottom = this.tileCenter(0, 3).y + 18;
     let nearest = Infinity;
+    const scores = GameState.cycleDef.monsterB.id === 'flying_scores';
     for (const { a, dy } of this.swarm) {
-      this.moveActor(a, this.pos.x, Phaser.Math.Clamp(this.pos.y + dy, top, bottom), dt);
+      // 乐谱在空中翻飞：上下飘
+      const wobble = scores ? Math.sin((this.elapsed + a.speed * 40) / 260) * 30 : 0;
+      this.moveActor(a, this.pos.x, Phaser.Math.Clamp(this.pos.y + dy + wobble, top, bottom), dt);
       a.y = Phaser.Math.Clamp(a.y, top, bottom);
+      if (scores && this.distToPlayer(a) < CHASE.caughtDist + 6) {
+        this.scoreCut(a);
+        continue;
+      }
       nearest = Math.min(nearest, this.distToPlayer(a));
     }
-    if (nearest < CHASE.caughtDist) return this.caught();
+    if (!scores && nearest < CHASE.caughtDist) return this.caught();
 
     // 近距离：屏幕边缘泛红，每持续 1 秒 -1
     const near = nearest < CHASE.chase2NearDist;
@@ -267,8 +320,12 @@ export class Act04Scene extends RoomScene {
       const tx = Math.min(this.playerTile().x + 7, this.room.map[0].length - 3);
       const c = this.tileCenter(tx, 0);
       this.examDoorX = c.x;
-      const door = this.add.rectangle(c.x, c.y + 4, 34, 40, 0x6a5a48).setStrokeStyle(2, 0xb8a888).setDepth(6);
+      const doorImg = fitImage(this, tex('obj', 'class_door'), { x: c.x - 22, y: c.y - TILE * 1.2 - 20, w: 44, h: TILE * 1.2 + 40 });
+      const door = doorImg ?? this.add.rectangle(c.x, c.y + 4, 34, 40, 0x6a5a48).setStrokeStyle(2, 0xb8a888);
+      door.setDepth(6);
       this.tweens.add({ targets: door, alpha: { from: 0, to: 1 }, duration: 400 });
+      this.clearSwarm();
+      this.placeTrash(tx - 2);
     }
     if (this.examDoorX !== null && Math.abs(this.pos.x - this.examDoorX) < 22) {
       this.chase = 'done';
@@ -276,6 +333,49 @@ export class Act04Scene extends RoomScene {
       this.player.setVisible(false);
       startAct(this, 5);
     }
+  }
+
+  /** 四周目：被飞散的乐谱割伤 -5，乐谱被弹开。4 秒内被割 3 次 → 被追上 */
+  private scoreCut(a: Actor): void {
+    GameState.deductSanity(SANITY_COST.scoreCut, 'score-cut');
+    this.cameras.main.flash(90, 120, 0, 0);
+    a.x -= 170;
+    a.obj.setPosition(a.x, a.y);
+    const now = this.elapsed;
+    this.cuts = [...this.cuts.filter((t) => now - t < 4000), now];
+    if (this.cuts.length >= 3) this.caught();
+  }
+
+  /** 坚持够时间：考场门出现，怪物群停下、散去 */
+  private clearSwarm(): void {
+    this.redEdge?.setAlpha(0);
+    for (const { a } of this.swarm) {
+      a.speed = 0;
+      this.tweens.add({ targets: a.obj, alpha: 0, duration: 1200, onComplete: () => a.obj.setVisible(false) });
+    }
+    this.swarm = [];
+  }
+
+  /** 考场门旁边的垃圾桶（追逐路线上的材料：追逐结束后再调查） */
+  private placeTrash(tx: number): void {
+    const c = this.tileCenter(tx, 3);
+    this.trash = fitImage(this, tex('obj', 'trash_can'), { x: c.x - 18, y: c.y - 30, w: 36, h: 52 }) ?? this.add.rectangle(c.x, c.y, 24, 30, 0x3a3a3a);
+    this.trash.setDepth(7);
+    const m = this.materialsHere().find((x) => x.spot === 'trash_can');
+    if (m && hintLevel(GameState.save) >= 1) {
+      const dot = this.add.circle(c.x, c.y - 10, 3, 0xfff6d0, 0.8).setDepth(8);
+      this.tweens.add({ targets: dot, alpha: 0.1, duration: 900, yoyo: true, repeat: -1 });
+    }
+  }
+
+  onInteract(): void {
+    if (this.trash && !this.locked && Phaser.Math.Distance.Between(this.trash.x, this.trash.y, this.pos.x, this.pos.y) < 60) {
+      const m = this.materialsHere().find((x) => x.spot === 'trash_can');
+      if (m) void this.pickup(m, this.t('trash_material'));
+      else this.ui.say(this.t('trash'));
+      return;
+    }
+    super.onInteract();
   }
 
   private caught(): void {

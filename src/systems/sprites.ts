@@ -180,3 +180,27 @@ export function fitImage(
     .setOrigin((b.x0 + bw / 2) / b.w, (b.y1 + 1) / b.h)
     .setScale(scale);
 }
+
+/**
+ * 只取图的一部分（crop 矩形，原图像素坐标），等比缩放进 box，水平居中、底边对齐。
+ * 用于从贴图里裁出一幅人像、从绳子素材里裁出一根绳等。
+ */
+export function cropImage(
+  scene: Phaser.Scene,
+  key: string,
+  crop: { x: number; y: number; w: number; h: number },
+  box: { x: number; y: number; w: number; h: number },
+): Phaser.GameObjects.Image | null {
+  if (!hasAll(scene, [key])) return null;
+  const sc = Math.min(box.w / crop.w, box.h / crop.h);
+  const left = box.x + box.w / 2 - (crop.w * sc) / 2;
+  const top = box.y + box.h - crop.h * sc;
+  return scene.add
+    .image(left - crop.x * sc, top - crop.y * sc, key)
+    .setOrigin(0)
+    .setScale(sc)
+    .setCrop(crop.x, crop.y, crop.w, crop.h);
+}
+
+/** 二周目的人像：从墙面贴图中间那幅裁出来 */
+export const PORTRAIT_CROP = { x: 186, y: 126, w: 144, h: 206 };
