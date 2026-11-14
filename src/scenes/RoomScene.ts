@@ -601,6 +601,13 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       // 垂下的绳子：从画面上方一直垂到这里，末端一个绳圈
       g.lineStyle(3, 0x8a7e66, 1).lineBetween(0, -TILE * 6, 0, 0);
       g.strokeCircle(0, w * 0.35, w * 0.35);
+    } else if (/ribbon_04/.test(name)) {
+      // 拉直横跨的缎带：一条略微下垂的线
+      g.lineStyle(3, 0xc87a9a, 0.85);
+      g.beginPath();
+      g.moveTo(-w / 2, 0);
+      for (let i = 1; i <= 10; i++) g.lineTo(-w / 2 + (w * i) / 10, Math.sin((Math.PI * i) / 10) * w * 0.06);
+      g.strokePath();
     } else if (/ribbon/.test(name)) {
       // 缎带：一个蝴蝶结加两条带子
       const r = w / 2;

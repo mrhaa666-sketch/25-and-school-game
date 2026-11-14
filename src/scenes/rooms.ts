@@ -338,7 +338,7 @@ export const ROOMS: Record<string, RoomDef> = {
     doors: { '1': 'infirmary', '2': 'classroom4', '3': 'art_prep4', '4': 'locked_class4', '5': 'music_prep4' },
     lights: lampRow(3.5, 3, 27, 6, 0),
     map: [
-      '##2#W##3#b#1##4#W#f#5###W#####SS',
+      '##2#W##3###1##4#W#f#5###W#bb##SS',
       '#.............................SS',
       '#.............................SS',
       '#.............................SS',
@@ -354,14 +354,15 @@ export const ROOMS: Record<string, RoomDef> = {
     decor: [
       ...classSigns([2, 7, 11, 14, 20]),
       // 瑞希周目：走廊里散落的缎带（取代画在墙和地板贴图里的）
-      { tex: 'mizuki_ribbon_01', x: 6.2, y: -0.6, scale: 0.8, wall: true, cycle: [3] },
-      { tex: 'mizuki_ribbon_02', x: 9.5, y: 2.6, scale: 0.7, angle: 20, cycle: [3] },
-      { tex: 'mizuki_ribbon_03', x: 18.3, y: -0.4, scale: 0.8, wall: true, cycle: [3] },
-      { tex: 'mizuki_ribbon_04', x: 22.6, y: 3.3, scale: 0.7, angle: -35, cycle: [3] },
-      { tex: 'mizuki_ribbon_02', x: 27.4, y: 1.8, scale: 0.6, angle: 70, cycle: [3] },
+      { tex: 'mizuki_ribbon_02', x: 6.2, y: -0.6, scale: 0.8, wall: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 9.5, y: 2.6, scale: 0.7, angle: 20, cycle: [3] },
+      { tex: 'mizuki_ribbon_02', x: 18.3, y: -0.4, scale: 0.8, wall: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 22.6, y: 3.3, scale: 0.7, angle: -35, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 27.4, y: 1.8, scale: 0.6, angle: 70, cycle: [3] },
       // 前景：从天花板垂下来的一根绳子；瑞希周目多一条垂下的缎带
       { tex: 'rope_hanging', x: 11.5, y: 1.2, scale: 0.5, fg: true, cycle: [1, 2, 3, 4] },
-      { tex: 'mizuki_ribbon_01', x: 17.5, y: 0.8, scale: 0.7, angle: 90, fg: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_01', x: 17.5, y: 0.8, scale: 0.7, fg: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_04', x: 23, y: 0.4, scale: 3, fg: true, cycle: [3] },
     ],
     // 3/4/5 是只在对应周目能进的房间，由第二幕的场景判断能不能进
     exits: {
@@ -392,9 +393,9 @@ export const ROOMS: Record<string, RoomDef> = {
     map: [
       '############',
       '#ee..ee..ee#',
-      '#P.........#',
-      '#....tt...S#',
       '#..........#',
+      '#....tt...S#',
+      '#PPP.......#',
       '#####1######',
     ],
     objects: {
@@ -412,8 +413,8 @@ export const ROOMS: Record<string, RoomDef> = {
     doors: { '1': 'corridor4' },
     decor: [
       { tex: 'mizuki_mannequin', x: 10.5, y: 1.6, scale: 1.0, cycle: [3] },
-      { tex: 'mizuki_ribbon_02', x: 3.5, y: 3.3, scale: 0.6, angle: 25, cycle: [3] },
-      { tex: 'mizuki_ribbon_04', x: 8.2, y: 1.4, scale: 0.6, angle: -40, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 3.5, y: 3.3, scale: 0.6, angle: 25, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 8.2, y: 1.4, scale: 0.6, angle: -40, cycle: [3] },
       { tex: 'decal:decal_chalk_01', x: 6, y: 1.3, scale: 2.2, alpha: 0.6 },
     ],
     examine: [
@@ -475,7 +476,7 @@ export const ROOMS: Record<string, RoomDef> = {
     lights: [...lampRow(4, 4, 14, 5, 3)],
     decor: [
       { tex: 'decal:decal_chalk_01', x: 10, y: 1.6, scale: 2.4, alpha: 0.6 },
-      { tex: 'mafuyu_award_wall', x: 3.5, y: -0.9, scale: 2.2, wall: true, cycle: [1] },
+      { tex: 'mafuyu_award_wall', x: 3.5, y: -0.9, scale: 3, wall: true, cycle: [1] },
       { tex: 'decal:decal_test_01', x: 6.4, y: 6.4, scale: 0.8, angle: 12, cycle: [1] },
       { tex: 'decal:decal_test_02', x: 11.6, y: 8.5, scale: 0.8, angle: -20, cycle: [1] },
       { tex: 'decal:decal_paper_03', x: 15.5, y: 7.6, scale: 0.7, angle: 30 },
@@ -518,7 +519,7 @@ export const ROOMS: Record<string, RoomDef> = {
     lights: [...lampRow(4.5, 4, 14, 5, 4)],
     decor: [
       { tex: 'decal:decal_chalk_01', x: 8, y: 1.6, scale: 2.4, alpha: 0.6 },
-      { tex: 'mafuyu_award_wall', x: 13.5, y: -0.9, scale: 2.2, wall: true, cycle: [1] },
+      { tex: 'mafuyu_award_wall', x: 13.5, y: -0.9, scale: 3, wall: true, cycle: [1] },
       { tex: 'decal:decal_test_01', x: 10.4, y: 6.5, scale: 0.8, angle: -15, cycle: [1] },
       { tex: 'decal:decal_footprint_01', x: 14.5, y: 4.5, scale: 1.2, alpha: 0.5 },
     ],
@@ -561,7 +562,7 @@ export const ROOMS: Record<string, RoomDef> = {
     lights: [...lampRow(4.5, 3, 13, 5, 5)],
     decor: [
       { tex: 'decal:decal_chalk_01', x: 8, y: 1.5, scale: 2.6, alpha: 0.6 },
-      { tex: 'mafuyu_award_wall', x: 2.6, y: -0.9, scale: 2.0, wall: true, cycle: [1] },
+      { tex: 'mafuyu_award_wall', x: 2.6, y: -0.9, scale: 3, wall: true, cycle: [1] },
       { tex: 'decal:decal_test_02', x: 14.2, y: 6.4, scale: 0.8, angle: 25, cycle: [1] },
       { tex: 'decal:decal_paper_01', x: 3.5, y: 8.4, scale: 0.7, angle: -10 },
     ],
@@ -625,17 +626,18 @@ export const ROOMS: Record<string, RoomDef> = {
     doors: { '1': 'stairs2', T: 'pink_room2', P: 'pink_room2' },
     decor: [
       ...classSigns([5, 12, 19, 27]),
-      { tex: 'mizuki_ribbon_03', x: 3.4, y: -0.5, scale: 0.8, wall: true, cycle: [3] },
-      { tex: 'mizuki_ribbon_01', x: 8.6, y: 2.4, scale: 0.7, angle: -15, cycle: [3] },
-      { tex: 'mizuki_ribbon_04', x: 15.2, y: -0.6, scale: 0.8, wall: true, cycle: [3] },
-      { tex: 'mizuki_ribbon_02', x: 21.5, y: 3.2, scale: 0.7, angle: 40, cycle: [3] },
+      { tex: 'mizuki_ribbon_02', x: 3.4, y: -0.5, scale: 0.8, wall: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 8.6, y: 2.4, scale: 0.7, angle: -15, cycle: [3] },
+      { tex: 'mizuki_ribbon_02', x: 15.2, y: -0.6, scale: 0.8, wall: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 21.5, y: 3.2, scale: 0.7, angle: 40, cycle: [3] },
       { tex: 'mizuki_ribbon_03', x: 25.8, y: 1.5, scale: 0.6, angle: -60, cycle: [3] },
       { tex: 'rope_hanging', x: 16.5, y: 1.2, scale: 0.5, fg: true, cycle: [1, 2, 3, 4] },
-      { tex: 'mizuki_ribbon_04', x: 9.5, y: 0.8, scale: 0.7, angle: 90, fg: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_01', x: 9.5, y: 0.8, scale: 0.7, fg: true, cycle: [3] },
+      { tex: 'mizuki_ribbon_04', x: 22, y: 0.4, scale: 3, fg: true, cycle: [3] },
     ],
     lights: lampRow(3.5, 3, 29, 6, 2),
     map: [
-      '#####c###b##c###f##c#######c####',
+      '#####c##bb##c###f##c#######c####',
       '#..............................#',
       '1..............................T',
       '#.............................n#',
@@ -733,7 +735,7 @@ export const ROOMS: Record<string, RoomDef> = {
     ],
     map: [
       '########1#######',
-      '#....TT........#',
+      '#....TTT.......#',
       '#.kk........kk.#',
       '#..............#',
       '#.kk........kk.#',
@@ -796,7 +798,7 @@ ROOMS.corridor3_final = {
   floor: 3,
   lights: lampRow(3.5, 3, 21, 6, 2),
   map: [
-    '#####1##b###2###f######SS',
+    '#####1##bb##2###f######SS',
     '#......................SS',
     '#......................SS',
     'U......................SS',
@@ -886,7 +888,7 @@ function mizukiCorridor4(def: RoomDef): RoomDef {
     objects: { ...def.objects, Q: { id: 'mizuki_mannequin', color: 0x8a6a7a, tex: 'mizuki_mannequin' } },
     decor: [
       ...(def.decor ?? []),
-      { tex: 'mizuki_ribbon_01', x: 16.2, y: 3.6, scale: 0.6, angle: 30, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 16.2, y: 3.6, scale: 0.6, angle: 30, cycle: [3] },
       { tex: 'mizuki_ribbon_03', x: 19.8, y: 3.7, scale: 0.6, angle: -20, cycle: [3] },
     ],
     examine: [...(def.examine ?? []), { ch: 'Q', key: 'examine.corridor4.mannequin' }],
