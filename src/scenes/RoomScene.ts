@@ -484,7 +484,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   // ------------------------------------------------------------ 窗外远景（N2）
 
   /** 远景贴图：night_view / dawn_view（2048×1024，左右无缝）；没到时用代码画的占位 */
-  private backdropKey(): string {
+  protected backdropKey(): string {
     const dawn = GameState.isFinal;
     const key = tex('backdrop', dawn ? 'dawn_view' : 'night_view');
     if (this.textures.exists(key)) return key;
@@ -1538,12 +1538,27 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   protected changeRoom(roomId: string, arriveAt?: string): void {
     this.transitioning = true;
     Audio.play('door_open');
+    const from = this.room?.floor;
+    const to = ROOMS[roomId]?.floor;
+    const stairs = from !== undefined && to !== undefined && from !== to && this.allowStairwell();
+    if (stairs) this.backdropKey(); // 远景的占位图要先生成好
     this.cameras.main.fadeOut(250, 0, 0, 0);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, async () => {
+      // N8：换楼层时，淡出和淡入之间插一段楼梯间
+      if (stairs) await this.ui.playStairwell(from!, to!, GameState.isFinal);
+      if (!this.sys.isActive()) return;
       this.loadRoom(roomId, arriveAt);
       this.cameras.main.fadeIn(250, 0, 0, 0);
       this.transitioning = false;
     });
+  }
+
+  /**
+   * 换楼层时能不能插楼梯间过场（N8）。追逐、限时、剧情演出进行中的换层不插。
+   * 子类有追逐 / 限时的话覆盖它。
+   */
+  protected allowStairwell(): boolean {
+    return true;
   }
 
   /** 补充周目的提示：没拿到的材料附近有微弱光点 */

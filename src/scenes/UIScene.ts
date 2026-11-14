@@ -148,6 +148,67 @@ export class UIScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * 楼梯间过场（N8）：全屏的楼梯间，窗口里是窗外远景。往下走一层，远景在窗里的位置往上移。
+   * 配脚步声，不显示文字。stairwell 图缺失时用色块画一个楼梯间。
+   */
+  playStairwell(fromFloor: number, toFloor: number, dawn: boolean, ms = 2600): Promise<void> {
+    const layer = this.add.container(0, 0).setDepth(840);
+    const v = (f: number) => ({ 4: 0.1, 3: 0.25, 2: 0.4, 1: 0.55 })[f] ?? 0.3;
+    const bdKey = tex('backdrop', dawn ? 'dawn_view' : 'night_view');
+    const fallback = dawn ? 'backdrop-fallback-dawn' : 'backdrop-fallback-night';
+    const key = this.textures.exists(bdKey) ? bdKey : this.textures.exists(fallback) ? fallback : null;
+    const bgKey = tex('bg', 'stairwell');
+    const hasArt = this.textures.exists(bgKey);
+    // 窗口：有图时整屏都铺远景（图的窗玻璃是透明的），没图时只在画出来的窗口里
+    const win = hasArt ? { x: 0, y: 0, w: GAME_WIDTH, h: GAME_HEIGHT } : { x: 760, y: 120, w: 300, h: 260 };
+    let view: Phaser.GameObjects.TileSprite | null = null;
+    let viewH = 1;
+    if (key) {
+      const src = this.textures.get(key).getSourceImage();
+      const scale = (GAME_HEIGHT * 1.6) / src.height;
+      view = this.add.tileSprite(win.x, win.y, win.w, win.h, key).setOrigin(0).setTileScale(scale).setTint(dawn ? 0xd0d0d0 : 0x9a9a9a);
+      viewH = src.height;
+      view.tilePositionY = viewH * v(fromFloor);
+      layer.add(view);
+    }
+    if (hasArt) {
+      layer.add(this.add.image(0, 0, bgKey).setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setTint(dawn ? 0xd8d8d8 : 0xa0a0a0));
+    } else {
+      // 色块楼梯间：四周的墙、窗框、一段往下的台阶
+      const g = this.add.graphics();
+      const wall = dawn ? 0x4a4a4e : 0x16161a;
+      g.fillStyle(wall, 1);
+      g.fillRect(0, 0, GAME_WIDTH, win.y).fillRect(0, win.y + win.h, GAME_WIDTH, GAME_HEIGHT - win.y - win.h);
+      g.fillRect(0, win.y, win.x, win.h).fillRect(win.x + win.w, win.y, GAME_WIDTH - win.x - win.w, win.h);
+      g.lineStyle(6, dawn ? 0x2a2a2e : 0x0a0a0c, 1).strokeRect(win.x, win.y, win.w, win.h);
+      g.lineBetween(win.x + win.w / 2, win.y, win.x + win.w / 2, win.y + win.h);
+      g.fillStyle(dawn ? 0x3a3a3e : 0x0e0e11, 1);
+      for (let i = 0; i < 8; i++) g.fillRect(140 + i * 60, 460 + i * 30, 640 - i * 30, 30);
+      g.lineStyle(3, dawn ? 0x2a2a2e : 0x08080a, 1).lineBetween(120, 420, 600, 660);
+      layer.add(g);
+    }
+    layer.setAlpha(0);
+    return new Promise((resolve) => {
+      this.tweens.add({ targets: layer, alpha: 1, duration: 450 });
+      if (view) this.tweens.add({ targets: view, tilePositionY: viewH * v(toFloor), duration: ms, ease: 'Sine.easeInOut' });
+      // 下楼梯的脚步声
+      const steps = this.time.addEvent({ delay: 380, repeat: Math.floor(ms / 380) - 1, callback: () => Audio.play('step_walk') });
+      this.time.delayedCall(ms - 450, () =>
+        this.tweens.add({
+          targets: layer,
+          alpha: 0,
+          duration: 450,
+          onComplete: () => {
+            steps.remove();
+            layer.destroy(true);
+            resolve();
+          },
+        }),
+      );
+    });
+  }
+
   /** 用 Promise 写演出脚本更顺手：await ui.sayAsync([...]) */
   sayAsync(lines: string | string[]): Promise<void> {
     return new Promise((resolve) => this.say(lines, resolve));
