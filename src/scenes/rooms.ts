@@ -24,6 +24,8 @@ export interface RoomObject {
   tex?: string;
   /** 挂在墙上 / 嵌在墙里的东西：宽度对齐物件，允许向上超出这一格（黑板、窗、门） */
   wall?: boolean;
+  /** 想换成的新外观（贴图名）：有这张图就用它，没有就继续用 tex */
+  look?: string;
   /** 个别物件的绘制微调（R7）：缩放倍数，x / y 偏移（格）。只影响画面，不影响碰撞 */
   fit?: { scale?: number; dx?: number; dy?: number };
 }
@@ -75,6 +77,20 @@ export interface RoomDecor {
   fg?: boolean;
 }
 
+/**
+ * 只有一句话的调查点（L3）：不扣精神、不给材料、不影响任何判定。
+ * 文字在文本表 examine.<房间>.<名字> 里，还没写的时候调查了没有反应。
+ */
+export interface RoomExamine {
+  /** 对应的物件字母；不写就用格坐标 */
+  ch?: string;
+  x?: number;
+  y?: number;
+  /** 文本键（examine.<房间>.<名字>） */
+  key: string;
+  cycle?: (1 | 2 | 3 | 4 | 'final')[];
+}
+
 export interface RoomDef {
   id: string;
   map: string[];
@@ -100,6 +116,8 @@ export interface RoomDef {
   lights?: RoomLight[];
   /** 装饰列表（R6） */
   decor?: RoomDecor[];
+  /** 一句话的调查点（L3） */
+  examine?: RoomExamine[];
 }
 
 /** 走廊里的东西（L1）：只挡路，调查不到 */
@@ -208,9 +226,19 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'infirmary',
     floor: 4,
     doors: { '1': 'corridor4' },
+    decor: [
+      { tex: 'decal:decal_stain_01', x: 12.5, y: 6.6, scale: 1.6, alpha: 0.8 },
+      { tex: 'decal:decal_stain_03', x: 4.2, y: 7.4, scale: 1.1, alpha: 0.7 },
+      { tex: 'decal:decal_glass_01', x: 15.3, y: 2.6, scale: 0.9 },
+    ],
+    examine: [
+      { ch: 'i', key: 'examine.infirmary.iv_stand' },
+      { x: 12, y: 6, key: 'examine.infirmary.stain' },
+      { x: 15, y: 2, key: 'examine.infirmary.glass' },
+    ],
     map: [
       '##########M#######',
-      '#BB..........KKK.#',
+      '#BB.i........KKK.#',
       '#BB..............#',
       '#................#',
       '#bb.....DD.......#',
@@ -220,8 +248,9 @@ export const ROOMS: Record<string, RoomDef> = {
       '########1#########',
     ],
     objects: {
+      i: { id: 'iv_stand', color: 0x6a6e72, tex: 'iv_stand' },
       B: { id: 'bed', color: 0xb8b4aa, spot: 'bedhead', label: '病床', tex: 'bed' },
-      b: { id: 'bed2', color: 0xa8a49a, label: '病床', tex: 'bed' },
+      b: { id: 'bed2', color: 0xa8a49a, label: '病床', tex: 'bed', look: 'curtain_bed' },
       M: { id: 'mirror', color: 0x6f7c86, label: '镜子', tex: 'mirror', wall: true },
       K: { id: 'cabinet', color: 0x58625a, spot: 'cabinet', label: '药柜', tex: 'medicine_cabinet' },
       D: { id: 'desk', color: 0x5a4a3a, label: '办公桌', tex: 'office_desk' },
@@ -275,15 +304,29 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'art_prep4',
     floor: 4,
     doors: { '1': 'corridor4' },
+    decor: [
+      { tex: 'decal:decal_paper_01', x: 3.4, y: 2.5, scale: 0.8, angle: 15 },
+      { tex: 'decal:decal_paper_02', x: 8.6, y: 4.4, scale: 0.7, angle: -30 },
+      { tex: 'decal:decal_stain_02', x: 9.8, y: 3.4, scale: 1.0, alpha: 0.7 },
+      { tex: 'ena_canvas_pile', x: 2.4, y: 3.9, scale: 1.4, cycle: [2] },
+    ],
+    examine: [
+      { ch: 'P', key: 'examine.art_prep4.plaster_shelf' },
+      { ch: 'S', key: 'examine.art_prep4.paint_sink' },
+      { x: 3, y: 2, key: 'examine.art_prep4.paper' },
+      { x: 2, y: 3, key: 'examine.art_prep4.canvas_pile', cycle: [2] },
+    ],
     map: [
       '############',
       '#ee..ee..ee#',
-      '#..........#',
-      '#....tt....#',
+      '#P.........#',
+      '#....tt...S#',
       '#..........#',
       '#####1######',
     ],
     objects: {
+      S: { id: 'paint_sink', color: 0x5a5e60, tex: 'paint_sink' },
+      P: { id: 'plaster_shelf', color: 0x8a867e, tex: 'plaster_shelf' },
       e: { id: 'easel', color: 0x4a4440, tex: 'easel_portraits' },
       t: { id: 'prep_desk', color: 0x5a4a3a, spot: 'desk', tex: 'office_desk' },
     },
@@ -294,6 +337,16 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'locked_class4',
     floor: 4,
     doors: { '1': 'corridor4' },
+    decor: [
+      { tex: 'mizuki_mannequin', x: 10.5, y: 1.6, scale: 1.0, cycle: [3] },
+      { tex: 'mizuki_ribbon_02', x: 3.5, y: 3.3, scale: 0.6, angle: 25, cycle: [3] },
+      { tex: 'mizuki_ribbon_04', x: 8.2, y: 1.4, scale: 0.6, angle: -40, cycle: [3] },
+      { tex: 'decal:decal_chalk_01', x: 6, y: 1.3, scale: 2.2, alpha: 0.6 },
+    ],
+    examine: [
+      { x: 10, y: 1, key: 'examine.locked_class4.mannequin', cycle: [3] },
+      { x: 6, y: 1, key: 'examine.locked_class4.chalk' },
+    ],
     map: [
       '####KKKK####',
       '#..........#',
@@ -314,15 +367,28 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'music_prep4',
     floor: 4,
     doors: { '1': 'corridor4' },
+    decor: [
+      { tex: 'decal:decal_score_01', x: 3.2, y: 2.6, scale: 0.8, angle: 10, cycle: [4] },
+      { tex: 'decal:decal_score_02', x: 8.5, y: 4.3, scale: 0.8, angle: -25, cycle: [4] },
+      { tex: 'decal:decal_score_03', x: 6.8, y: 2.3, scale: 0.7, angle: 40, cycle: [4] },
+      { tex: 'kanade_cup_stack', x: 9.6, y: 4.1, scale: 0.9, cycle: [4] },
+      { tex: 'decal:decal_stain_04', x: 2.6, y: 4.3, scale: 1.0, alpha: 0.6 },
+    ],
+    examine: [
+      { ch: 'm', key: 'examine.music_prep4.music_stand' },
+      { x: 9, y: 4, key: 'examine.music_prep4.cup_stack', cycle: [4] },
+      { x: 3, y: 2, key: 'examine.music_prep4.score', cycle: [4] },
+    ],
     map: [
       '############',
-      '#ll......ll#',
+      '#ll.m..m.ll#',
       '#..........#',
       '#....tt....#',
       '#..........#',
       '#####1######',
     ],
     objects: {
+      m: { id: 'music_stand', color: 0x2e2e32, tex: 'music_stand' },
       l: { id: 'shelf', color: 0x4a4440, tex: 'locker' },
       t: { id: 'prep_desk', color: 0x5a4a3a, spot: 'desk', tex: 'office_desk' },
     },
@@ -334,6 +400,18 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'classroom4',
     floor: 4,
     lights: [...lampRow(4, 4, 14, 5, 3)],
+    decor: [
+      { tex: 'decal:decal_chalk_01', x: 10, y: 1.6, scale: 2.4, alpha: 0.6 },
+      { tex: 'mafuyu_award_wall', x: 3.5, y: -0.9, scale: 2.2, wall: true, cycle: [1] },
+      { tex: 'decal:decal_test_01', x: 6.4, y: 6.4, scale: 0.8, angle: 12, cycle: [1] },
+      { tex: 'decal:decal_test_02', x: 11.6, y: 8.5, scale: 0.8, angle: -20, cycle: [1] },
+      { tex: 'decal:decal_paper_03', x: 15.5, y: 7.6, scale: 0.7, angle: 30 },
+    ],
+    examine: [
+      { x: 3, y: 1, key: 'examine.classroom4.award_wall', cycle: [1] },
+      { x: 6, y: 6, key: 'examine.classroom4.test', cycle: [1] },
+      { x: 10, y: 1, key: 'examine.classroom4.chalk' },
+    ],
     map: [
       '########KKKK######',
       '#.......LL.......#',
@@ -365,6 +443,17 @@ export const ROOMS: Record<string, RoomDef> = {
     floor: 3,
     doors: { '1': 'corridor3_long' },
     lights: [...lampRow(4.5, 4, 14, 5, 4)],
+    decor: [
+      { tex: 'decal:decal_chalk_01', x: 8, y: 1.6, scale: 2.4, alpha: 0.6 },
+      { tex: 'mafuyu_award_wall', x: 13.5, y: -0.9, scale: 2.2, wall: true, cycle: [1] },
+      { tex: 'decal:decal_test_01', x: 10.4, y: 6.5, scale: 0.8, angle: -15, cycle: [1] },
+      { tex: 'decal:decal_footprint_01', x: 14.5, y: 4.5, scale: 1.2, alpha: 0.5 },
+    ],
+    examine: [
+      { x: 13, y: 1, key: 'examine.classroom3.award_wall', cycle: [1] },
+      { x: 10, y: 6, key: 'examine.classroom3.test', cycle: [1] },
+      { x: 14, y: 4, key: 'examine.classroom3.footprint' },
+    ],
     map: [
       '######KKKK########',
       '#.......LL.......#',
@@ -397,6 +486,17 @@ export const ROOMS: Record<string, RoomDef> = {
     floor: 3,
     doors: { '1': 'stairs2' },
     lights: [...lampRow(4.5, 3, 13, 5, 5)],
+    decor: [
+      { tex: 'decal:decal_chalk_01', x: 8, y: 1.5, scale: 2.6, alpha: 0.6 },
+      { tex: 'mafuyu_award_wall', x: 2.6, y: -0.9, scale: 2.0, wall: true, cycle: [1] },
+      { tex: 'decal:decal_test_02', x: 14.2, y: 6.4, scale: 0.8, angle: 25, cycle: [1] },
+      { tex: 'decal:decal_paper_01', x: 3.5, y: 8.4, scale: 0.7, angle: -10 },
+    ],
+    examine: [
+      { x: 2, y: 1, key: 'examine.exam_room.award_wall', cycle: [1] },
+      { x: 14, y: 6, key: 'examine.exam_room.test', cycle: [1] },
+      { x: 3, y: 8, key: 'examine.exam_room.paper' },
+    ],
     map: [
       '#####KKKKKK##C##',
       '#.......T......#',
@@ -425,6 +525,11 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'stairs2',
     floor: 2,
     doors: { '1': 'corridor2' },
+    decor: [
+      { tex: 'decal:decal_crack_01', x: 6, y: 2.4, scale: 2.2 },
+      { tex: 'decal:decal_crack_02', x: 2.4, y: 1.4, scale: 1.4, angle: 60 },
+    ],
+    examine: [{ x: 6, y: 2, key: 'examine.stairs2.crack' }],
     map: [
       '####II####',
       '#........#',
@@ -503,12 +608,22 @@ export const ROOMS: Record<string, RoomDef> = {
   music_room: {
     id: 'music_room',
     floor: 1,
-    lights: [...lampRow(4.5, 5, 13, 8, 1)],
+    // 钢琴上方一块灯光
+    lights: [...lampRow(4.5, 5, 13, 8, 1), { x: 7, y: 2.6, scale: 2.6, intensity: 0.55 }],
+    decor: [
+      { tex: 'decal:decal_score_04', x: 4.5, y: 4.5, scale: 0.8, angle: -30 },
+      { tex: 'decal:decal_score_01', x: 12.3, y: 6.4, scale: 0.7, angle: 15 },
+    ],
+    examine: [
+      { ch: 'M', key: 'examine.music_room.metronome' },
+      { ch: 'm', key: 'examine.music_room.music_stand' },
+      { x: 4, y: 4, key: 'examine.music_room.score' },
+    ],
     map: [
       '##################',
-      '#....PPPP........#',
+      '#....PPPP..M.....#',
       '#....PPPPk.......#',
-      '#................#',
+      '#............m.m.#',
       '#................#',
       '#..s.s.s.s.s.....#',
       '#................#',
@@ -516,6 +631,8 @@ export const ROOMS: Record<string, RoomDef> = {
       '##################',
     ],
     objects: {
+      M: { id: 'metronome', color: 0x3a3028, tex: 'metronome' },
+      m: { id: 'music_stand', color: 0x2e2e32, tex: 'music_stand' },
       P: { id: 'piano', color: 0x101012, label: '钢琴', tex: 'grand_piano' },
       k: { id: 'kanade', color: 0x000000, hidden: true },
       s: { id: 'chair', color: 0x3a3430, tex: 'chair' },
@@ -529,9 +646,21 @@ export const ROOMS: Record<string, RoomDef> = {
   lobby: {
     id: 'lobby',
     floor: 1,
+    decor: [
+      { tex: 'shoes_pair', x: 9.4, y: 5.4, scale: 0.7 },
+      { tex: 'decal:decal_footprint_01', x: 8, y: 4.4, scale: 1.1, alpha: 0.55 },
+      { tex: 'decal:decal_footprint_01', x: 8.3, y: 2.6, scale: 1.1, alpha: 0.45, angle: 8 },
+    ],
+    // 大门外透进来的光
+    lights: [{ x: 8, y: 5.8, scale: 2.8, intensity: 0.45 }],
+    examine: [
+      { ch: 'T', key: 'examine.lobby.trophy_case' },
+      { x: 9, y: 5, key: 'examine.lobby.shoes' },
+      { x: 8, y: 4, key: 'examine.lobby.footprint' },
+    ],
     map: [
       '########1#######',
-      '#..............#',
+      '#....TT........#',
       '#.kk........kk.#',
       '#..............#',
       '#.kk........kk.#',
@@ -539,6 +668,7 @@ export const ROOMS: Record<string, RoomDef> = {
       '######GGGG######',
     ],
     objects: {
+      T: { id: 'trophy_case', color: 0x4a4236, tex: 'trophy_case' },
       k: { id: 'shoe_locker', color: 0x4a4440, label: '鞋柜', tex: 'shoe_locker' },
       G: { id: 'gate', color: 0x5a5248, label: '大门', tex: 'school_gate', wall: true },
     },

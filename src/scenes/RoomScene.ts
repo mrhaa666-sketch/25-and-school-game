@@ -227,10 +227,24 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const probe = { x: this.pos.x + v.x * (TILE * 0.75), y: this.pos.y - 8 + v.y * (TILE * 0.75) };
     const tile = this.worldToTile(probe.x, probe.y);
     const ch = this.charAt(tile.x, tile.y);
+    // L3：一句话的调查点。文字还没写的时候没有反应
+    const ex = this.examineAt(ch, tile);
+    if (ex) {
+      if (tHas(ex.key, GameState.save.cycle)) this.ui.say(this.text(ex.key));
+      return;
+    }
     const obj = this.room.objects[ch];
     if (!obj) return;
     if (this.onCycleObject(obj, tile)) return;
     this.onObject(obj, tile);
+  }
+
+  /** 这一格有没有一句话的调查点（按物件字母或格坐标，带周目条件） */
+  private examineAt(ch: string, tile: { x: number; y: number }) {
+    const cyc = GameState.save.cycle;
+    return (this.room.examine ?? []).find(
+      (e) => (!e.cycle || e.cycle.includes(cyc)) && (e.ch ? e.ch === ch : e.x === tile.x && e.y === tile.y),
+    );
   }
 
   // ------------------------------------------------------------ 各周目的环境（交接文档 4.1 / 2.1.1）
@@ -240,6 +254,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const c = GameState.save.cycle;
     if (c === 2 && obj.id === 'corridor_window') return 'portrait'; // 墙上挂满没画完的人像
     if (c === 3 && (obj.id === 'class_door' || obj.id === 'burst_door')) return 'pink_door'; // 所有教室门变成粉色
+    if (obj.look && this.textures.exists(tex('obj', obj.look))) return obj.look; // 新外观到了就用新的
     return obj.tex ?? null;
   }
 
@@ -588,7 +603,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     } else if (/crack|glass/.test(name)) {
       g.lineStyle(1, 0x0a0a0a, 0.6).lineBetween(-w / 2, 0, -w / 6, -w / 8).lineBetween(-w / 6, -w / 8, w / 6, w / 10).lineBetween(w / 6, w / 10, w / 2, -w / 12);
     } else if (/paper|test|score|chalk/.test(name)) {
-      g.fillStyle(0xbab4a6, 0.45).fillRect(-w / 2, -w * 0.35, w, w * 0.7);
+      g.fillStyle(0x8a857a, 0.3).fillRect(-w * 0.35, -w * 0.25, w * 0.7, w * 0.5);
     } else {
       g.fillStyle(0x3a3530, 0.8).fillRect(-w / 2, -w / 2, w, w);
     }
