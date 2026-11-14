@@ -885,7 +885,7 @@ function mizukiCorridor4(def: RoomDef): RoomDef {
   return {
     ...def,
     map: g.map((r) => r.join('')),
-    objects: { ...def.objects, Q: { id: 'mizuki_mannequin', color: 0x8a6a7a, tex: 'mizuki_mannequin' } },
+    objects: { ...def.objects, Q: { id: 'mizuki_mannequin', color: 0x4a3c44, tex: 'mizuki_mannequin' } },
     decor: [
       ...(def.decor ?? []),
       { tex: 'mizuki_ribbon_03', x: 16.2, y: 3.6, scale: 0.6, angle: 30, cycle: [3] },

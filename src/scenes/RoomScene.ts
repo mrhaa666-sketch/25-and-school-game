@@ -581,7 +581,13 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const key = d.tex.startsWith('decal:') ? tex('decal', d.tex.slice(6)) : tex('obj', d.tex);
       let o: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
       if (this.textures.exists(key)) {
-        const img = this.add.image(cx, cy, key).setAngle(d.angle ?? 0).setAlpha(d.alpha ?? 1).setTint(shade(0xc8c8c8, 0xf0f0f0));
+        // 地面贴花压暗、半透明一点，免得在暗处变成一块亮斑
+        const decal = d.tex.startsWith('decal:');
+        const img = this.add
+          .image(cx, cy, key)
+          .setAngle(d.angle ?? 0)
+          .setAlpha((d.alpha ?? 1) * (decal ? 0.7 : 1))
+          .setTint(decal ? shade(0x8a8a8a, 0xc0c0c0) : shade(0xc8c8c8, 0xf0f0f0));
         img.setScale(w / img.width);
         o = img;
       } else o = this.drawDecorBlock(d, cx, cy, w);
