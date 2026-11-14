@@ -1,0 +1,25 @@
+{
+  "theme": 2,
+  "key": "ena",
+  "themeName": "绘名",
+  "startRoom": "infirmary",
+  "playOpening": false,
+  "environment": {
+    "desc": "墙上挂满没画完的人像，脸都被涂掉；松节油味；冷白色灯光",
+    "floorColor": "#2b2e33",
+    "wallColor": "#181b20",
+    "lightTint": "#e6f0ff"
+  },
+  "monsterA": { "id": "plaster", "name": "石膏像", "color": "#e8e4dc", "ai": "statue" },
+  "monsterB": { "id": "faceless", "name": "从画框里爬出来的无脸人", "color": "#8e8a84", "ai": "swarm" },
+  "scenes": {
+    "floor3": "canvas_ena",
+    "floor2": "drained_mizuki",
+    "musicRoom": "shattering_kanade"
+  },
+  "exam": {
+    "question": "你的画，有人在看吗？",
+    "options": ["有", "没有", "不知道", "不重要"]
+  },
+  "limitedRooms": ["art_prep4"]
+}

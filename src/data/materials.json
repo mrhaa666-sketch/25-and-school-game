@@ -1,0 +1,14 @@
+[
+  { "id": "mafuyu_checkup",    "theme": 1, "slot": 0, "name": "体检表",               "room": "infirmary",      "spot": "bedhead",   "locationHint": "医务室",     "desc": "所有项目都是满分。备注栏写着「请继续保持」。" },
+  { "id": "mafuyu_blank_paper","theme": 1, "slot": 1, "name": "白卷",                 "room": "exam_room",      "spot": "blank_paper","locationHint": "考场",      "desc": "一张什么都没写的试卷。" },
+  { "id": "mafuyu_nameplate",  "theme": 1, "slot": 2, "name": "小学的名牌",           "room": "classroom4",     "spot": "lectern_drawer","locationHint": "四楼教室", "desc": "「梦想」栏只写了一个字：「我」。" },
+  { "id": "ena_sketch",        "theme": 2, "slot": 0, "name": "速写本残页",           "room": "art_prep4",      "spot": "desk",      "locationHint": "美术准备室", "desc": "画的是 Nightcord 里四个人的头像，画得很随便。" },
+  { "id": "ena_comment",       "theme": 2, "slot": 1, "name": "揉皱的评语单",         "room": "corridor3",      "spot": "trash_can", "locationHint": "三楼走廊",   "desc": "「技巧尚可，缺乏个人特色。」下面有用力划过的痕迹。" },
+  { "id": "ena_paint",         "theme": 2, "slot": 2, "name": "用完的颜料管",         "room": "stairs2",        "spot": "floor",     "locationHint": "二楼楼梯间", "desc": "上面写着一个日期。" },
+  { "id": "mizuki_ribbon",     "theme": 3, "slot": 0, "name": "发绳",                 "room": "locked_class4",  "spot": "desk",      "locationHint": "四楼锁着的教室", "desc": "" },
+  { "id": "mizuki_diary",      "theme": 3, "slot": 1, "name": "上锁的日记本",         "room": "locker3",        "spot": "locker",    "locationHint": "三楼储物柜", "desc": "打不开。锁孔是空的。" },
+  { "id": "mizuki_postcard",   "theme": 3, "slot": 2, "name": "没有写收件人的明信片", "room": "pink_room2",     "spot": "table",     "locationHint": "二楼粉色房间", "desc": "背面只写了一句「下次再说吧」。" },
+  { "id": "kanade_score",      "theme": 4, "slot": 0, "name": "手写乐谱",             "room": "music_prep4",    "spot": "desk",      "locationHint": "音乐准备室", "desc": "很多处涂改，标题被划掉了。" },
+  { "id": "kanade_earphones",  "theme": 4, "slot": 1, "name": "耳机",                 "room": "classroom3",     "spot": "window",    "locationHint": "三楼教室",   "desc": "线断了一半，还缠在一起。" },
+  { "id": "kanade_cupnoodle",  "theme": 4, "slot": 2, "name": "空的杯面容器",         "room": "corridor2",      "spot": "corridor_end","locationHint": "二楼走廊尽头", "desc": "底下压着一张便签：「做完这首就睡」。" }
+]

@@ -1,0 +1,115 @@
+{
+  "_说明": "所有文本都在这里。查找顺序：c{主题}.{键} → common.{键}。例如 c2.act02.mirror 会覆盖 common.act02.mirror。",
+
+  "ui": {
+    "title": "25-and-school",
+    "newGame": "新游戏",
+    "continue": "继续游戏",
+    "gallery": "结局图鉴",
+    "back": "返回",
+    "noSave": "没有存档",
+    "overwriteConfirm": "已有存档。重新开始会覆盖进度（结局图鉴保留）。",
+    "confirm": "确定",
+    "cancel": "取消",
+    "sanityLabel": "精神",
+    "cycleNames": ["一周目", "二周目", "三周目", "四周目"],
+    "cycleCountFormat": "第{n}周目",
+    "cycleCountNumerals": ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"],
+    "finalCycle": "终周目",
+    "actNames": ["", "第一幕", "第二幕", "第三幕", "第四幕", "第五幕", "第六幕", "第七幕", "第八幕", "第九幕", "第十幕"],
+    "pauseTitle": "暂停",
+    "resume": "继续",
+    "toTitle": "回到标题",
+    "bagTitle": "背包",
+    "bagEmpty": "什么都没有。",
+    "phoneTitle": "通讯录",
+    "phoneMessage": "发消息",
+    "phoneCall": "打电话",
+    "phoneSendFailed": "发送失败",
+    "phoneCalling": "呼叫中",
+    "phoneCallEnded": "通话结束",
+    "lockedEnding": "？？？",
+    "endingLabel": "结局",
+    "pressToContinue": "按 空格 继续",
+    "obtained": "拿到了「{name}」。",
+    "controlsHint": "WASD/方向键 移动　Shift 奔跑　空格 调查　Tab 手机　I 背包　Esc 暂停"
+  },
+
+  "contacts": [
+    { "id": "kanade", "name": "奏" },
+    { "id": "ena", "name": "绘名" },
+    { "id": "mizuki", "name": "瑞希" }
+  ],
+
+  "screenWords": ["消失吧", "加入我们", "一起来玩"],
+  "screenWordBlankPaper": "为什么不写",
+
+  "voice": {
+    "continue": "还没有结束。继续往前走。",
+    "last": "最后一次了。"
+  },
+
+  "common": {
+    "act01": {
+      "opening": [
+        "深夜。废弃学校的门口。",
+        "走廊尽头站着一个小女孩，背对着这边。",
+        "「……怎么了？」",
+        "真冬走了过去。"
+      ]
+    },
+    "act02": {
+      "wake": ["……", "医务室。满是灰尘。灯管在闪。"],
+      "bed": "病床。床单上积了一层灰。",
+      "bedhead_material": "床头夹着一张纸。",
+      "bedhead_empty": "床头什么都没有。",
+      "mirror": ["镜子里，身后站着一个人影。", "回过头。什么都没有。"],
+      "mirror_again": "镜子里只有自己。",
+      "cabinet": "药柜。玻璃上都是灰。",
+      "desk": "办公桌。抽屉是空的。",
+      "door_out": "走廊很暗。",
+      "corridor_window": "窗外什么都看不见。",
+      "stairs_placeholder": "楼梯口。（追逐战 1 在 M2 制作）"
+    },
+    "gate": {
+      "push": "真冬推开了大门。"
+    },
+    "transition": {
+      "wake": ["真冬在医务室的病床上醒来。", "和第一次一模一样。"],
+      "sit": "她坐了很久。好像少了什么，但想不起来。",
+      "phone": "通讯录里，又有一个名字看不清了。"
+    },
+    "supplementary": {
+      "line": "……总感觉有什么东西没拿。"
+    },
+    "ending9": [
+      "门外是校外。",
+      "真冬回到家，继续生活。",
+      "隐约觉得哪里不对。"
+    ]
+  },
+
+  "c1": {},
+  "c2": {
+    "act02": {
+      "wake": ["……", "医务室。冷白色的灯。", "有一股松节油的味道。"]
+    }
+  },
+  "c3": {
+    "act02": {
+      "door_out": "门是粉色的。"
+    }
+  },
+  "c4": {
+    "act02": {
+      "wake": ["……", "医务室。", "某处有节拍器在响。"],
+      "corridor_window": "窗外是凌晨。"
+    }
+  },
+
+  "final": {
+    "act02": {
+      "wake": ["灯是关着的。", "月光照进来。"]
+    }
+  }
+}

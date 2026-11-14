@@ -1,0 +1,25 @@
+{
+  "theme": 1,
+  "key": "mafuyu",
+  "themeName": "真冬",
+  "startRoom": "school_gate",
+  "playOpening": true,
+  "environment": {
+    "desc": "原样：灰尘、昏暗、灯管闪烁",
+    "floorColor": "#2a2a2e",
+    "wallColor": "#16161a",
+    "lightTint": "#d8d4c8"
+  },
+  "monsterA": { "id": "nurse", "name": "扭曲的护士鬼", "color": "#c9c3b4", "ai": "linear" },
+  "monsterB": { "id": "mafuyus", "name": "带着诡异微笑的真冬们", "color": "#7a6b8f", "ai": "swarm" },
+  "scenes": {
+    "floor3": "hanged_ena",
+    "floor2": "drained_mizuki",
+    "musicRoom": "shattering_kanade"
+  },
+  "exam": {
+    "question": "你想成为什么样的人？",
+    "options": ["医生", "医生", "医生", "医生"]
+  },
+  "limitedRooms": []
+}

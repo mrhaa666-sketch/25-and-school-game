@@ -1,0 +1,25 @@
+{
+  "theme": 4,
+  "key": "kanade",
+  "themeName": "奏",
+  "startRoom": "infirmary",
+  "playOpening": false,
+  "environment": {
+    "desc": "全程节拍器声，越往下层越快；走廊灯随节拍明灭；窗外永远是凌晨",
+    "floorColor": "#25272e",
+    "wallColor": "#12141a",
+    "lightTint": "#c8d0e8"
+  },
+  "monsterA": { "id": "piano", "name": "自己会动的钢琴", "color": "#101010", "ai": "piano" },
+  "monsterB": { "id": "flying_scores", "name": "飞散的乐谱", "color": "#f0ede4", "ai": "swarm" },
+  "scenes": {
+    "floor3": "canvas_ena",
+    "floor2": "folded_clothes",
+    "musicRoom": "blank_score_kanade"
+  },
+  "exam": {
+    "question": "你为了谁而活？",
+    "options": ["所有人", "家人", "不知道", "没有人"]
+  },
+  "limitedRooms": ["music_prep4"]
+}

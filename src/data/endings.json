@@ -1,0 +1,12 @@
+[
+  { "id": 1,  "type": "死亡",   "act": 2,  "title": "被抓住",       "summary": "追逐战 1 被追上。" },
+  { "id": 2,  "type": "死亡",   "act": 3,  "title": "松开的结",     "summary": "绳结没有绑好。" },
+  { "id": 3,  "type": "死亡",   "act": 3,  "title": "收上去的绳子", "summary": "没能在时限内爬到三楼。" },
+  { "id": 4,  "type": "同化",   "act": 4,  "title": "我们",         "summary": "追逐战 2 被追上。" },
+  { "id": 5,  "type": "同化",   "act": 5,  "title": "自己的字迹",   "summary": "没有交白卷。" },
+  { "id": 6,  "type": "消失",   "act": 6,  "title": "坐下",         "summary": "在粉色的房间里坐下了。" },
+  { "id": 7,  "type": "循环",   "act": 7,  "title": "一百",         "summary": "走进了有数数声的那条路。" },
+  { "id": 8,  "type": "同化",   "act": 9,  "title": "合唱",         "summary": "答应了邀请。" },
+  { "id": 9,  "type": "普通",   "act": 10, "title": "日常",         "summary": "回到了家，继续生活。" },
+  { "id": 10, "type": "真结局", "act": 0,  "title": "空地",         "summary": "她们在等她。" }
+]

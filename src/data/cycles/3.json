@@ -1,0 +1,25 @@
+{
+  "theme": 3,
+  "key": "mizuki",
+  "themeName": "瑞希",
+  "startRoom": "infirmary",
+  "playOpening": false,
+  "environment": {
+    "desc": "所有教室门变成粉色，大部分锁着；门后有听不清的说话声，靠近就停；走廊挂满缎带",
+    "floorColor": "#2e2a2d",
+    "wallColor": "#1c161a",
+    "lightTint": "#ffd9e8"
+  },
+  "monsterA": { "id": "moving_door", "name": "会移动的门", "color": "#d98fb0", "ai": "door" },
+  "monsterB": { "id": "turned_backs", "name": "背对真冬的人影", "color": "#3a3438", "ai": "swarm" },
+  "scenes": {
+    "floor3": "canvas_ena",
+    "floor2": "folded_clothes",
+    "musicRoom": "shattering_kanade"
+  },
+  "exam": {
+    "question": "你有不想被人知道的事吗？",
+    "options": ["有", "没有", "不能说", "没有人会问"]
+  },
+  "limitedRooms": ["locked_class4", "locker3"]
+}
