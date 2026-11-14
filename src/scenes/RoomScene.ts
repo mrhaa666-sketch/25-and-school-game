@@ -25,6 +25,10 @@ export const DIR_VEC: Record<Dir, { x: number; y: number }> = {
 /** 玩家的碰撞盒（脚下一块），比格子小一点，方便过门 */
 const BODY_W = 24;
 const BODY_H = 20;
+/** 后墙立面的高度（格） */
+const FACADE_ROWS = 3;
+/** 嵌在后墙上的门洞 / 门的高度：约 2.4 格 */
+const DOOR_H = Math.round(TILE * 2.4);
 
 /** 会移动的东西（怪物、群体中的个体）。坐标是脚下中心 */
 export interface Actor {
@@ -343,13 +347,13 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
    * 房间矮的时候放大镜头，让房间高度至少占屏幕的 70%（上限 2 倍，取 0.25 的倍数）。
    * 放大后比屏幕大的方向跟随玩家；房间整个放得下就居中不动。
    */
-  protected frameRoom(worldW: number, worldH: number): void {
+  protected frameRoom(worldW: number, worldH: number, top = this.originY): void {
     const cam = this.cameras.main;
     const minH = GAME_HEIGHT * 0.7;
     const zoom = worldH >= minH ? 1 : Math.min(2, Math.ceil(minH / worldH / 0.25) * 0.25);
     cam.setZoom(zoom);
     const cx = this.originX + worldW / 2;
-    const cy = this.originY + worldH / 2;
+    const cy = top + worldH / 2;
     const viewW = GAME_WIDTH / zoom;
     const viewH = GAME_HEIGHT / zoom;
     if (worldW > viewW || worldH > viewH) {
@@ -404,8 +408,13 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const h = def.map.length;
     const worldW = w * TILE;
     const worldH = h * TILE;
+    // 后墙的立面向上多占 2 格，地图顶上要给它留出空间；居中和镜头都把这部分算进去
+    const back = this.backWallCells(def);
+    const minBackY = back.length ? Math.min(...back.map((c) => c.y)) : FACADE_ROWS;
+    const extra = Math.max(0, FACADE_ROWS - 1 - minBackY) * TILE;
+    const totalH = worldH + extra;
     this.originX = worldW > GAME_WIDTH ? 0 : Math.floor((GAME_WIDTH - worldW) / 2);
-    this.originY = worldH > GAME_HEIGHT ? 0 : Math.floor((GAME_HEIGHT - worldH) / 2);
+    this.originY = (totalH > GAME_HEIGHT ? 0 : Math.floor((GAME_HEIGHT - totalH) / 2)) + extra;
 
     const env = GameState.cycleDef.environment;
     const floor = Phaser.Display.Color.HexStringToColor(def.floorColor ?? env.floorColor).color;
@@ -413,14 +422,40 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.roomExtras.forEach((o) => o.destroy());
     this.roomExtras = [];
     this.objectImages = new Map();
-    const floorKey = tex('tile', def.floorTex ?? this.cycleFloorTex());
-    const wallKey = tex('tile', def.wallTex ?? this.cycleWallTex());
+    const floorKey = this.floorTexFor(def);
     const texturedFloor = this.textures.exists(floorKey);
-    const texturedWall = this.textures.exists(wallKey);
+    const isBack = new Set(back.map((c) => `${c.x},${c.y}`));
+    // 立面：新的 wall_face_*（512×768 = 2 格宽 3 格高）；没有就先用旧墙贴图顶替
+    const faceKey = def.wallTex ? tex('tile', def.wallTex) : this.facadeTex();
+    const texturedFace = this.textures.exists(faceKey);
+    const topKey = def.wallTex ? tex('tile', def.wallTex) : tex('tile', 'wall_top');
+    const texturedTop = this.textures.exists(topKey);
     const floorMask = this.make.graphics({}, false);
-    const wallMask = this.make.graphics({}, false);
+    const topMask = this.make.graphics({}, false);
+    const faceMask = this.make.graphics({}, false);
     const g = this.add.graphics();
     this.roomLayer.add(g);
+    // 墙顶没有贴图时用的颜色：接近黑的深灰，靠地板一侧描一道边
+    const topColor = 0x1b1a1f;
+    const walkableAt = (x: number, y: number) => {
+      const ch = def.map[y]?.[x] ?? ' ';
+      return ch !== ' ' && ch !== '#' && !def.objects[ch]?.wall && !isBack.has(`${x},${y}`);
+    };
+    const drawTop = (x: number, y: number, px: number, py: number) => {
+      // 紧挨着后墙的墙顶（房间的上角）跟着立面一起向上延伸，不留缺口
+      if (isBack.has(`${x - 1},${y}`) || isBack.has(`${x + 1},${y}`)) {
+        const up = (FACADE_ROWS - 1) * TILE;
+        if (texturedTop) topMask.fillRect(px, py - up, TILE, up);
+        else g.fillStyle(topColor, 1).fillRect(px, py - up, TILE, up);
+      }
+      if (texturedTop) return void topMask.fillRect(px, py, TILE, TILE);
+      g.fillStyle(topColor, 1).fillRect(px, py, TILE, TILE);
+      g.fillStyle(0x34323a, 1);
+      if (walkableAt(x, y + 1)) g.fillRect(px, py + TILE - 2, TILE, 2);
+      if (walkableAt(x, y - 1)) g.fillRect(px, py, TILE, 2);
+      if (walkableAt(x - 1, y)) g.fillRect(px, py, 2, TILE);
+      if (walkableAt(x + 1, y)) g.fillRect(px + TILE - 2, py, 2, TILE);
+    };
 
     const letters = new Set<string>();
     def.map.forEach((row, y) => {
@@ -428,35 +463,84 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         if (ch === ' ') return;
         const px = this.originX + x * TILE;
         const py = this.originY + y * TILE;
+        const backWall = isBack.has(`${x},${y}`);
+        if (backWall) {
+          // 朝向玩家的后墙：从这一格的下沿向上 3 格
+          if (texturedFace) faceMask.fillRect(px, py + TILE - FACADE_ROWS * TILE, TILE, FACADE_ROWS * TILE);
+          else g.fillStyle(wall, 1).fillRect(px, py + TILE - FACADE_ROWS * TILE, TILE, FACADE_ROWS * TILE);
+        }
         if (ch === '#') {
-          if (texturedWall) wallMask.fillRect(px, py, TILE, TILE);
-          else g.fillStyle(wall, 1).fillRect(px, py, TILE, TILE);
-          g.fillStyle(0x000000, 0.35).fillRect(px, py + TILE - 5, TILE, 5); // 墙根的阴影
+          if (!backWall) drawTop(x, y, px, py);
           return;
         }
-        if (texturedFloor) floorMask.fillRect(px, py, TILE, TILE);
-        else {
-          g.fillStyle(floor, 1).fillRect(px, py, TILE, TILE);
-          g.lineStyle(1, 0x000000, 0.18).strokeRect(px, py, TILE, TILE);
+        // 侧墙 / 下墙上的贴墙物件（窗、侧门）：底下是墙顶，不是地板
+        if (!backWall && def.objects[ch]?.wall) {
+          drawTop(x, y, px, py);
+          letters.add(ch);
+          return;
+        }
+        if (!backWall) {
+          if (texturedFloor) floorMask.fillRect(px, py, TILE, TILE);
+          else {
+            g.fillStyle(floor, 1).fillRect(px, py, TILE, TILE);
+            g.lineStyle(1, 0x000000, 0.18).strokeRect(px, py, TILE, TILE);
+          }
         }
         if (/[0-9]/.test(ch)) {
-          g.fillStyle(0x000000, 0.55).fillRect(px + 4, py + 4, TILE - 8, TILE - 8);
+          if (backWall) {
+            // 后墙上的出口：先画一个门洞（R5 换成门的图）
+            g.fillStyle(0x000000, 0.8).fillRect(px + 4, py + TILE - DOOR_H, TILE - 8, DOOR_H);
+          } else g.fillStyle(0x000000, 0.55).fillRect(px + 4, py + 4, TILE - 8, TILE - 8);
           return;
         }
         if (def.objects[ch]) letters.add(ch);
       });
     });
+    // 后墙脚下的一道阴影
+    for (const c of back) {
+      const px = this.originX + c.x * TILE;
+      const py = this.originY + (c.y + 1) * TILE;
+      g.fillStyle(0x000000, 0.35).fillRect(px, py, TILE, 4);
+      g.fillStyle(0x000000, 0.18).fillRect(px, py + 4, TILE, 6);
+    }
 
-    // 地板 / 墙面贴图：整片平铺，再用遮罩只露出对应的格子
-    const tiled = (key: string, mask: Phaser.GameObjects.Graphics, scale: number, tint: number, depth: number) => {
-      const ts = this.add.tileSprite(this.originX, this.originY, worldW, worldH, key).setOrigin(0).setDepth(depth);
-      ts.setTileScale(scale).setTint(tint).setMask(mask.createGeometryMask());
+    // 贴图：整片平铺，再用遮罩只露出对应的格子
+    const tiled = (
+      key: string,
+      mask: Phaser.GameObjects.Graphics,
+      area: { x: number; y: number; w: number; h: number },
+      scaleX: number,
+      scaleY: number,
+      tint: number,
+      depth: number,
+    ) => {
+      const ts = this.add.tileSprite(area.x, area.y, area.w, area.h, key).setOrigin(0).setDepth(depth);
+      ts.setTileScale(scaleX, scaleY).setTint(tint).setMask(mask.createGeometryMask());
       this.roomExtras.push(ts, mask);
+      return ts;
     };
-    if (texturedFloor) tiled(floorKey, floorMask, (TILE * 4) / 512, 0xb0b0b0, -20);
+    const roomArea = { x: this.originX, y: this.originY, w: worldW, h: worldH };
+    if (texturedFloor) tiled(floorKey, floorMask, roomArea, (TILE * 4) / 512, (TILE * 4) / 512, this.floorTint(def), -20);
     else floorMask.destroy();
-    if (texturedWall) tiled(wallKey, wallMask, (TILE * 2) / 512, 0x707070, -19);
-    else wallMask.destroy();
+    if (texturedTop && !def.wallTex) {
+      const src = this.textures.get(topKey).getSourceImage();
+      const up = (FACADE_ROWS - 1) * TILE;
+      tiled(topKey, topMask, { ...roomArea, y: roomArea.y - up, h: roomArea.h + up }, TILE / src.width, TILE / src.height, 0x909090, -19);
+    } else if (texturedTop) tiled(topKey, topMask, roomArea, (TILE * 2) / 512, (TILE * 2) / 512, 0x707070, -19);
+    else topMask.destroy();
+    if (texturedFace && back.length) {
+      // 每一排后墙一条：横向按 2 格一个周期平铺（和格子对齐），纵向正好 3 格不重复
+      const src = this.textures.get(faceKey).getSourceImage();
+      const sx = (TILE * 2) / src.width;
+      const sy = (TILE * FACADE_ROWS) / src.height;
+      for (const y of new Set(back.map((c) => c.y))) {
+        const top = this.originY + (y + 1 - FACADE_ROWS) * TILE;
+        const rowMask = this.make.graphics({}, false);
+        for (const c of back) if (c.y === y) rowMask.fillRect(this.originX + c.x * TILE, top, TILE, FACADE_ROWS * TILE);
+        tiled(faceKey, rowMask, { x: this.originX, y: top, w: worldW, h: FACADE_ROWS * TILE }, sx, sy, 0x808080, -18);
+      }
+    }
+    faceMask.destroy();
 
     // 物件：有图用图，没图画色块。同一字母可能分散在多处（例如走廊的几扇窗），按连通区域分别画
     for (const comp of this.components(def, [...letters])) {
@@ -473,7 +557,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         ? fitImage(
             this,
             tex('obj', look),
-            obj.wall
+            obj.wall && isBack.has(`${comp.x0},${comp.y1}`)
+              ? this.onFacadeBox(obj, x, y + chh, cw)
+              : obj.wall
               ? this.isSolid(this.charAt(comp.x0, comp.y0 - 1)) || comp.y0 === 0
                 ? { x, y: y - TILE * 1.2, w: cw, h: chh + TILE * 1.2 } // 上墙 / 侧墙：向上多占一点
                 : { x, y, w: cw, h: chh } // 下墙：上方是地板，不往上画
@@ -498,7 +584,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.addMaterialHints();
     this.addDoorLights();
 
-    this.frameRoom(worldW, worldH);
+    this.frameRoom(worldW, totalH, this.originY - extra);
 
     // 放置玩家
     const spawn = at ?? (arriveAt ? this.arrivalTile(arriveAt) : (def.spawn ?? { x: 1, y: 1 }));
@@ -530,8 +616,10 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const t = this.findTile(ch);
       if (!t) continue;
       const c = this.tileCenter(t.x, t.y);
-      // 门在上墙时灯画在门上方，其余画在门旁边
-      const light = this.add.rectangle(c.x, c.y - TILE / 2 + 3, 18, 4, 0xe8e0c0, 0.7).setDepth(4);
+      // 门在后墙时灯画在门框上方，其余画在这一格的上沿
+      const onBack = this.backWallCells(this.room).some((b) => b.x === t.x && b.y === t.y);
+      const ly = onBack ? c.y + TILE / 2 - DOOR_H - 5 : c.y - TILE / 2 + 3;
+      const light = this.add.rectangle(c.x, ly, 18, 4, 0xe8e0c0, 0.7).setDepth(4);
       this.roomLayer.add(light);
       const fast = hinted.has(dest);
       const schedule = () => {
@@ -575,14 +663,62 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   }
 
   /** 当前周目的地板 / 墙面贴图 */
-  private cycleFloorTex(): string {
-    const c = GameState.save.cycle;
-    return { 1: 'floor_school', 2: 'floor_school_ena', 3: 'floor_school_mizuki', 4: 'floor_school_kanade', final: 'floor_final' }[c];
+  /** 地板按楼层选材质；房间自己指定了的不变。周目的差别交给 floorTint */
+  private floorTexFor(def: RoomDef): string {
+    if (def.floorTex) return tex('tile', def.floorTex);
+    const byStorey: Record<number, string> = { 4: 'floor_school', 3: 'floor_f3', 2: 'floor_f2', 1: 'floor_f1' };
+    const key = tex('tile', byStorey[def.floor ?? 4] ?? 'floor_school');
+    return this.textures.exists(key) ? key : tex('tile', 'floor_school');
   }
 
-  private cycleWallTex(): string {
+  /** 地板的色调：基础灰度乘上周目的环境光颜色。终周目不加色调 */
+  private floorTint(def: RoomDef): number {
+    if (def.floorTex || GameState.isFinal) return 0xb0b0b0;
+    const c = Phaser.Display.Color.HexStringToColor(GameState.cycleDef.environment.lightTint);
+    const k = 0xb0 / 255;
+    return Phaser.Display.Color.GetColor(Math.round(c.red * k), Math.round(c.green * k), Math.round(c.blue * k));
+  }
+
+  /** 各周目的墙立面；新图没到时退回旧的墙贴图 */
+  private facadeTex(): string {
     const c = GameState.save.cycle;
-    return c === 2 ? 'wall_school_ena' : c === 3 ? 'wall_school_mizuki' : 'wall_school';
+    const name = { 1: 'school', 2: 'ena', 3: 'mizuki', 4: 'kanade', final: 'school' }[c] ?? 'school';
+    const key = tex('tile', `wall_face_${name}`);
+    if (this.textures.exists(key)) return key;
+    return tex('tile', c === 2 ? 'wall_school_ena' : c === 3 ? 'wall_school_mizuki' : 'wall_school');
+  }
+
+  /**
+   * 朝向玩家的后墙：本身是墙（# / 贴墙物件 / 墙上的出口），而正下方是可以走的格子。
+   */
+  protected backWallCells(def: RoomDef): { x: number; y: number }[] {
+    const at = (x: number, y: number) => def.map[y]?.[x] ?? ' ';
+    const wallish = (x: number, y: number): boolean => {
+      const ch = at(x, y);
+      if (ch === '#') return true;
+      if (def.objects[ch]?.wall) return true;
+      // 出口数字：上面是墙或地图外时，算嵌在墙里
+      if (/[0-9]/.test(ch)) return y === 0 || at(x, y - 1) === ' ' || wallish(x, y - 1);
+      return false;
+    };
+    const walkable = (x: number, y: number) => {
+      const ch = at(x, y);
+      return ch !== ' ' && !wallish(x, y);
+    };
+    const out: { x: number; y: number }[] = [];
+    def.map.forEach((row, y) => [...row].forEach((_, x) => wallish(x, y) && walkable(x, y + 1) && out.push({ x, y })));
+    return out;
+  }
+
+  /**
+   * 后墙上的物件画在立面上：门、楼梯口、大门从地面立起（约 2.4 格高）；
+   * 黑板、窗、镜子、钟挂在中上部，下沿离地约 1 格。floorY 是这面墙的地面线。
+   */
+  private onFacadeBox(obj: RoomObject, x: number, floorY: number, w: number) {
+    const standing = /door|gate|stairs|pipe|vent/.test(`${obj.id} ${obj.tex ?? ''}`);
+    if (standing) return { x, y: floorY - DOOR_H, w, h: DOOR_H };
+    const top = floorY - FACADE_ROWS * TILE + 8;
+    return { x, y: top, w, h: floorY - TILE - top };
   }
 
   protected placePlayer(tx: number, ty: number): void {
