@@ -50,6 +50,19 @@ export class MafuyuSprite {
   }
 
   private readonly blinkFrames: string[];
+  private moving = false;
+  private frameIdx = 0;
+
+  /**
+   * 镜子里的那一帧：朝上的时候镜子里是正面，朝下的时候是背面，左右不变。
+   * 走路时和本人用同一个步伐。
+   */
+  mirrorFrame(): { key: string; originX: number; originY: number; scale: number } {
+    const dir: Dir = this.dir === 'up' ? 'down' : this.dir === 'down' ? 'up' : this.dir;
+    const g = this.groups[dir];
+    const key = this.moving ? g.walk[this.frameIdx % g.walk.length] : g.idle[0];
+    return { key, originX: g.m.originX, originY: g.m.originY, scale: this.height * g.m.unit };
+  }
 
   constructor(scene: Phaser.Scene, private readonly height = PLAYER_HEIGHT) {
     const k = MafuyuSprite.keys();
@@ -79,10 +92,12 @@ export class MafuyuSprite {
       this.t = 0;
     }
     const g = this.groups[this.dir];
+    this.moving = moving;
     if (moving) {
       this.t += delta / 1000;
       this.blinkT = -1;
-      this.image.setTexture(g.walk[Math.floor(this.t * g.fps) % g.walk.length]);
+      this.frameIdx = Math.floor(this.t * g.fps);
+      this.image.setTexture(g.walk[this.frameIdx % g.walk.length]);
       return;
     }
     this.t = 0;

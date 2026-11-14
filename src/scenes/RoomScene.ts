@@ -116,6 +116,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   protected extraLights: LightSource[] = [];
   /** 前景层（N4）：画在角色上方、带视差的东西；fade 是被角色挡住时的淡出系数 */
   private foreground: { obj: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics; base: number; w: number; h: number; fade: number; lamp?: boolean }[] = [];
+  /** 镜子倒影（N6） */
+  private mirrorFx?: { img: Phaser.GameObjects.Image; glass: Phaser.Geom.Rectangle; history: { t: number; x: number; y: number; f: ReturnType<MafuyuSprite['mirrorFrame']> }[] };
   /** 窗外远景（N2）：每扇窗一块，按镜头位置做视差 */
   private windowViews: { ts: Phaser.GameObjects.TileSprite; x: number; scale: number }[] = [];
   /** 光里的灰尘（N5） */
@@ -418,6 +420,50 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     for (const c of `${roomId}:${x}:${y}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
     const r = ((h >>> 0) % 1000) / 1000;
     return r < 0.7 ? null : r < 0.8 ? 'tilted' : r < 0.9 ? 'fallen' : 'carved';
+  }
+
+  // ------------------------------------------------------------ 镜子倒影（N6）
+
+  /** 墙上的镜子（物件 id mirror）：镜面里画玩家的倒影。只是画面，不触发任何东西 */
+  private setupMirror(def: RoomDef): void {
+    const ch = Object.keys(def.objects).find((k) => def.objects[k].id === 'mirror');
+    const mimg = ch ? this.objectImages.get(ch)?.[0] : undefined;
+    if (!mimg || !this.mafuyu) return;
+    const b = mimg.getBounds();
+    // 镜面：去掉镜框的一圈
+    const glass = new Phaser.Geom.Rectangle(b.x + b.width * 0.16, b.y + b.height * 0.12, b.width * 0.68, b.height * 0.74);
+    const img = this.add.image(0, 0, mimg.texture.key).setVisible(false).setTint(0x7a7a86).setAlpha(0.8);
+    img.preFX?.addColorMatrix().saturate(-0.5);
+    const mask = this.make.graphics({}, false);
+    mask.fillRect(glass.x, glass.y, glass.width, glass.height);
+    img.setMask(mask.createGeometryMask());
+    this.roomLayer.add(img);
+    this.roomExtras.push(mask);
+    this.mirrorFx = { img, glass, history: [] };
+  }
+
+  private updateMirror(): void {
+    const m = this.mirrorFx;
+    if (!m || !this.mafuyu) return;
+    const now = this.time.now;
+    m.history.push({ t: now, x: this.pos.x, y: this.pos.y, f: this.mafuyu.mirrorFrame() });
+    while (m.history.length > 2 && m.history[1].t < now - 600) m.history.shift();
+    // 精神值第三、四档：倒影比本人慢 0.4 秒。终周目不延迟
+    const tier = sanityTier(GameState.save.sanity);
+    const lag = !GameState.isFinal && tier >= 3 ? 400 : 0;
+    const s = lag ? (m.history.find((h) => h.t >= now - lag) ?? m.history[m.history.length - 1]) : m.history[m.history.length - 1];
+    const floorY = m.glass.bottom + TILE * 1.2;
+    const dist = s.y - floorY; // 离镜子所在的墙有多远
+    const near = Math.abs(s.x - m.glass.centerX) < TILE * 2.5 && dist > -TILE && dist < TILE * 3.5;
+    m.img.setVisible(near && this.player.visible);
+    if (!near) return;
+    // 越近，倒影越大、越靠下
+    const k = Phaser.Math.Clamp(1 - dist / (TILE * 4), 0.35, 1);
+    m.img
+      .setTexture(s.f.key)
+      .setOrigin(s.f.originX, s.f.originY)
+      .setScale(s.f.scale * (0.45 + 0.25 * k))
+      .setPosition(s.x, m.glass.bottom + 2 - (1 - k) * m.glass.height * 0.25);
   }
 
   // ------------------------------------------------------------ 窗外远景（N2）
@@ -849,6 +895,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private updateDarkness(): void {
     this.updateForeground();
     this.updateWindowViews();
+    this.updateMirror();
     this.updateDust(this.game.loop.delta);
     if (!this.darkness) return;
     this.darkness.beat = this.beatShade ? this.beatShade.alpha / 0.22 : 0;
@@ -1025,6 +1072,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.foreground = [];
     this.motes = [];
     this.windowViews = [];
+    this.mirrorFx = undefined;
     this.objectImages = new Map();
     const floorKey = this.floorTexFor(def);
     const texturedFloor = this.textures.exists(floorKey);
@@ -1241,6 +1289,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       else this.drawThreshold(def, e.x, e.y, px, py);
     }
 
+    this.setupMirror(def);
     this.addMaterialHints();
     this.addDoorLights();
     this.roomLights = [...this.buildRoomLights(def, isBack), ...this.leakLights];
