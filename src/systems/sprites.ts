@@ -41,7 +41,7 @@ const GROUPS: Record<string, { dir: string; names: string[] }> = {
     'fire_box', 'bulletin_board', 'class_sign', 'sink_row', 'broom_locker', 'locker_fallen', 'desk_pile',
     'curtain_bed', 'iv_stand', 'plaster_shelf', 'paint_sink', 'music_stand', 'metronome', 'trophy_case', 'shoes_pair',
     'mafuyu_award_wall', 'ena_portrait_01', 'ena_portrait_02', 'ena_portrait_03', 'ena_portrait_04', 'ena_portrait_05', 'ena_portrait_06',
-    'ena_canvas_pile', 'mizuki_ribbon_01', 'mizuki_ribbon_02', 'mizuki_ribbon_03', 'mizuki_ribbon_04', 'mizuki_mannequin', 'kanade_cup_stack', 'rope_hanging'] },
+    'ena_canvas_pile', 'mizuki_ribbon_01', 'mizuki_ribbon_02', 'mizuki_ribbon_03', 'mizuki_ribbon_04', 'mizuki_mannequin', 'kanade_cup_stack', 'rope_hanging', 'pillar'] },
   // CG：剧情关键时刻和结局的插画（1920×1080），缺图时跳过，游戏照常
   cg: { dir: 'ui/cg/', names: ['cg_act01_girl', 'cg_act02_wake', 'cg_act04_fall', 'cg_act07_fork', 'cg_act09_choir', 'cg_final_outside', 'cg_phone', 'cg_e1', 'cg_e2', 'cg_e3', 'cg_e4', 'cg_e6', 'cg_e7', 'cg_e8',
     'cg_e1_c1', 'cg_e1_c2', 'cg_e1_c3', 'cg_e1_c4', 'cg_e4_c1', 'cg_e4_c2', 'cg_e4_c3', 'cg_e4_c4'] },

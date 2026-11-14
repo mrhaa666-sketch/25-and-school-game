@@ -102,6 +102,19 @@ export interface RoomDef {
   decor?: RoomDecor[];
 }
 
+/** 走廊里的东西（L1）：只挡路，调查不到 */
+const CORRIDOR_STUFF: Record<string, RoomObject> = {
+  k: { id: 'sink_row', color: 0x5a5e60, tex: 'sink_row' },
+  p: { id: 'pillar', color: 0x34322f, tex: 'pillar' },
+  x: { id: 'desk_pile', color: 0x3e352c, tex: 'desk_pile' },
+  l: { id: 'locker_fallen', color: 0x464a4e, tex: 'locker_fallen' },
+  b: { id: 'bulletin_board', color: 0x4a4236, tex: 'bulletin_board', wall: true },
+  f: { id: 'fire_box', color: 0x5a2a26, tex: 'fire_box', wall: true },
+};
+
+/** 教室门牌：挂在后墙上每扇门的右上方 */
+const classSigns = (cols: number[]): RoomDecor[] => cols.map((c) => ({ tex: 'class_sign', x: c + 1.55, y: -0.95, scale: 0.7, wall: true, cycle: [1, 2, 3, 4, 'final'] }));
+
 const DESK = { id: 'desk', color: 0x4a4038, label: '桌', tex: 'school_desk' };
 const CLASS_DOOR = { id: 'class_door', color: 0x2c2620, label: '门', tex: 'class_door', wall: true };
 
@@ -221,19 +234,23 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'corridor4',
     floor: 4,
     doors: { '1': 'infirmary', '2': 'classroom4', '3': 'art_prep4', '4': 'locked_class4', '5': 'music_prep4' },
-    lights: lampRow(2.5, 3, 27, 6, 0),
+    lights: lampRow(3.5, 3, 27, 6, 0),
     map: [
-      '##2#W##3###1##4#W###5###W#####SS',
+      '##2#W##3#b#1##4#W#f#5###W#####SS',
       '#.............................SS',
       '#.............................SS',
       '#.............................SS',
-      '################################',
+      '#............xx................#',
+      '#........p...xx.......ll...p...#',
+      '####kkk#########################',
     ],
     objects: {
+      ...CORRIDOR_STUFF,
       W: { id: 'corridor_window', color: 0x1e2a36, label: '窗', tex: 'window_night', wall: true },
       S: { id: 'stairs', color: 0x3a3a3a, label: '楼梯口', tex: 'stairs' },
     },
     decor: [
+      ...classSigns([2, 7, 11, 14, 20]),
       // 瑞希周目：走廊里散落的缎带（取代画在墙和地板贴图里的）
       { tex: 'mizuki_ribbon_01', x: 6.2, y: -0.6, scale: 0.8, wall: true, cycle: [3] },
       { tex: 'mizuki_ribbon_02', x: 9.5, y: 2.6, scale: 0.7, angle: 20, cycle: [3] },
@@ -429,6 +446,7 @@ export const ROOMS: Record<string, RoomDef> = {
     floor: 2,
     doors: { '1': 'stairs2', T: 'pink_room2', P: 'pink_room2' },
     decor: [
+      ...classSigns([5, 12, 19, 27]),
       { tex: 'mizuki_ribbon_03', x: 3.4, y: -0.5, scale: 0.8, wall: true, cycle: [3] },
       { tex: 'mizuki_ribbon_01', x: 8.6, y: 2.4, scale: 0.7, angle: -15, cycle: [3] },
       { tex: 'mizuki_ribbon_04', x: 15.2, y: -0.6, scale: 0.8, wall: true, cycle: [3] },
@@ -437,15 +455,18 @@ export const ROOMS: Record<string, RoomDef> = {
       { tex: 'rope_hanging', x: 16.5, y: 1.2, scale: 0.5, fg: true, cycle: [1, 2, 3, 4] },
       { tex: 'mizuki_ribbon_04', x: 9.5, y: 0.8, scale: 0.7, angle: 90, fg: true, cycle: [3] },
     ],
-    lights: lampRow(2.5, 3, 29, 6, 2),
+    lights: lampRow(3.5, 3, 29, 6, 2),
     map: [
-      '#####c######c######c#######c####',
+      '#####c###b##c###f##c#######c####',
       '#..............................#',
       '1..............................T',
       '#.............................n#',
-      '################################',
+      '#......................xx......#',
+      '#..p....ll......p......xx......#',
+      '############kkk#################',
     ],
     objects: {
+      ...CORRIDOR_STUFF,
       c: CLASS_DOOR,
       n: { id: 'corridor_end', color: 0x2a2a2a, spot: 'corridor_end', hidden: true, solid: false },
       T: { id: 'stairs_down', color: 0x3a3a3a, tex: 'stairs', wall: true },
@@ -570,15 +591,21 @@ ROOMS.corridor3_final = {
   id: 'corridor3_final',
   alias: 'corridor3_long',
   floor: 3,
-  lights: lampRow(2.5, 3, 21, 6, 2),
+  lights: lampRow(3.5, 3, 21, 6, 2),
   map: [
-    '#####1######2##########SS',
+    '#####1##b###2###f######SS',
     '#......................SS',
     '#......................SS',
     'U......................SS',
-    '###BB####################',
+    '#......................##',
+    '#.......p........p.....##',
+    '###BB#####kkk############',
   ],
   objects: {
+    p: CORRIDOR_STUFF.p,
+    k: CORRIDOR_STUFF.k,
+    b: CORRIDOR_STUFF.b,
+    f: CORRIDOR_STUFF.f,
     S: { id: 'stairs_final', color: 0x3a3a3a, tex: 'stairs' },
     B: { id: 'quiet_door', color: 0x3a2a24, tex: 'class_door', wall: true },
     U: { id: 'stairs_up', color: 0x2a2a2a, hidden: true },
@@ -588,6 +615,7 @@ ROOMS.corridor3_final = {
     '2': { to: 'exam_room_final', arriveAt: '1' },
   },
   doors: { '1': 'classroom3', '2': 'exam_room' },
+  decor: classSigns([5, 12]),
   spawn: { x: 1, y: 2 },
 };
 

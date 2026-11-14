@@ -1274,8 +1274,14 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         this.objectImages.set(comp.ch, list);
         continue;
       }
-      g.fillStyle(obj.color, 1).fillRect(x + 3, y + 3, cw - 6, chh - 6);
-      g.lineStyle(1, 0x000000, 0.4).strokeRect(x + 3, y + 3, cw - 6, chh - 6);
+      // 没有图：画色块。后墙上的物件画在立面上（和有图时同一个位置）
+      const r = obj.wall && isBack.has(`${comp.x0},${comp.y1}`)
+        ? this.onFacadeBox(obj, x, y + chh, cw)
+        : obj.id === 'pillar'
+        ? { x: x + 4, y: y - TILE * 1.6, w: cw - 8, h: chh + TILE * 1.6 } // 柱子：立起来
+        : { x, y, w: cw, h: chh };
+      g.fillStyle(obj.color, 1).fillRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
+      g.lineStyle(1, 0x000000, 0.4).strokeRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
       if (obj.label && cw >= TILE * 2) {
         this.roomLayer.add(this.add.text(x + cw / 2, y + chh / 2, obj.label, textStyle(13, '#00000099')).setOrigin(0.5));
       }

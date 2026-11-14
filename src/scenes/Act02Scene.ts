@@ -237,9 +237,9 @@ export class Act02Scene extends RoomScene {
       const sp = 235;
       m.x += Math.cos(this.heading) * sp * dt;
       m.y += Math.sin(this.heading) * sp * dt;
-      // 走廊上下有墙：撞墙就贴着墙
+      // 走廊上下有墙：撞墙就贴着墙（最下面一排可走的格子在底墙上方）
       const top = this.tileCenter(0, 1).y + 4;
-      const bottom = this.tileCenter(0, 3).y + 18;
+      const bottom = this.tileCenter(0, this.room.map.length - 2).y + 18;
       m.y = Phaser.Math.Clamp(m.y, top, bottom);
       m.obj.setPosition(Math.round(m.x), Math.round(m.y));
       return;
