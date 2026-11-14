@@ -21,7 +21,7 @@ export class Act07Scene extends RoomScene {
   private forkSaid = false;
   private stillMs = 0;
   private listenedThisStop = false;
-  private darkness?: Phaser.GameObjects.Image;
+  private pipeDark?: Phaser.GameObjects.Image;
   private nextVoice = 0;
 
   constructor() {
@@ -72,7 +72,7 @@ export class Act07Scene extends RoomScene {
         tex.refresh();
       }
     }
-    this.darkness = this.add.image(0, 0, key).setDepth(300);
+    this.pipeDark = this.add.image(0, 0, key).setDepth(300);
   }
 
   private voiceText(x: number, y: number, alpha: number): void {
@@ -89,7 +89,7 @@ export class Act07Scene extends RoomScene {
   }
 
   protected onUpdate(_time: number, delta: number): void {
-    this.darkness?.setPosition(this.player.x, this.player.y - 10);
+    this.pipeDark?.setPosition(this.player.x, this.player.y - 10);
     // 爬行图朝右画的，往左爬时水平翻转
     const body = this.player.list[0];
     if (body instanceof Phaser.GameObjects.Image && (this.facing === 'left' || this.facing === 'right')) body.setFlipX(this.facing === 'left');

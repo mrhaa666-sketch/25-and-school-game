@@ -32,6 +32,22 @@ export interface RoomExit {
   arriveAt: string;
 }
 
+/** 房间里的固定光源（格坐标，可带小数） */
+export interface RoomLight {
+  /** sprites/lights/ 下的光效贴图名；不写用通用柔光 */
+  tex?: string;
+  x: number;
+  y: number;
+  /** 半径（格），默认 1.5 */
+  scale?: number;
+  /** 亮度 0~1，默认 0.6 */
+  intensity?: number;
+  /** 是否闪烁 */
+  flicker?: boolean;
+  /** 只在这些周目出现 */
+  cycle?: (1 | 2 | 3 | 4 | 'final')[];
+}
+
 export interface RoomDef {
   id: string;
   map: string[];
@@ -53,6 +69,8 @@ export interface RoomDef {
    * 材料所在房间的门口，灯闪得更频繁。
    */
   doors?: Record<string, string>;
+  /** 固定光源。窗户类物件会自动在地上生成一块窗光，不用写在这里 */
+  lights?: RoomLight[];
 }
 
 const DESK = { id: 'desk', color: 0x4a4038, label: '桌', tex: 'school_desk' };

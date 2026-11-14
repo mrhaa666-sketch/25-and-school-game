@@ -39,6 +39,7 @@ const GROUPS: Record<string, { dir: string; names: string[] }> = {
   scn: { dir: 'sprites/scenes/', names: ['floor2_clothes', 'floor2_lying', 'floor3_canvas', 'floor3_canvas_cut', 'floor3_hanged', 'music_kanade_blank', 'music_kanade_play', 'music_kanade_shatter'] },
   tile: { dir: 'tiles/', names: ['floor_final', 'floor_pink_room', 'floor_pipe', 'floor_school', 'floor_school_ena', 'floor_school_kanade', 'floor_school_mizuki', 'wall_school', 'wall_school_ena', 'wall_school_mizuki'] },
   bg: { dir: 'ui/bg/', names: ['climb_facade', 'ending10_lot', 'ending9_home', 'exam_closeup', 'final_gate', 'title'] },
+  light: { dir: 'sprites/lights/', names: ['light_player', 'light_window', 'light_window_dawn', 'light_lamp', 'light_door_leak'] },
   mat: { dir: 'ui/materials/', names: ['ena_comment', 'ena_paint', 'ena_sketch', 'kanade_cupnoodle', 'kanade_earphones', 'kanade_score', 'mafuyu_blank_paper', 'mafuyu_checkup', 'mafuyu_nameplate', 'mizuki_diary', 'mizuki_postcard', 'mizuki_ribbon'] },
 };
 for (const [prefix, g] of Object.entries(GROUPS)) {
@@ -46,7 +47,7 @@ for (const [prefix, g] of Object.entries(GROUPS)) {
 }
 
 /** 例：tex('obj', 'bed') → 'obj:bed' */
-export const tex = (prefix: 'obj' | 'mon' | 'scn' | 'tile' | 'bg' | 'mat', name: string) => `${prefix}:${name}`;
+export const tex = (prefix: 'obj' | 'mon' | 'scn' | 'tile' | 'bg' | 'mat' | 'light', name: string) => `${prefix}:${name}`;
 
 /** 官方小人的帧（不提交，本地放在 assets/sprites/official/） */
 const OFFICIAL: Record<string, { front: string[]; back: string[]; blink: string[] }> = {};

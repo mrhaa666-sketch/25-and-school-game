@@ -47,12 +47,15 @@ export class VisualFilter {
     this.flicker.setVisible(on);
   }
 
-  update(time: number): void {
+  /** roomLit：房间场景有自己的黑暗层（以玩家为中心），这时不画屏幕中心的暗角和整体压暗 */
+  update(time: number, roomLit = false): void {
     if (GameState.isFinal) {
       this.setActive(false);
       return;
     }
     this.setActive(true);
+    this.vignette.setVisible(!roomLit);
+    this.dim.setVisible(!roomLit);
     const tier = sanityTier(GameState.save.sanity);
     if (tier !== this.tier) {
       this.tier = tier;

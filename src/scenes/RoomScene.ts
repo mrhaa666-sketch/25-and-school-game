@@ -10,6 +10,7 @@ import { MafuyuSprite, PLAYER_HEIGHT } from '../systems/playerSprite';
 import { cropImage, fitImage, MAFUYU_STAND_REF, PORTRAIT_CROP, poseImage, tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 import { createCameraFx } from '../systems/VisualFilter';
+import { Darkness, type LightSource } from '../systems/Darkness';
 import { SCENE } from './flow';
 import { ROOMS, type RoomDef, type RoomObject } from './rooms';
 import type { PlayTarget, UIScene } from './UIScene';
@@ -77,6 +78,12 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private lightTimers: Phaser.Time.TimerEvent[] = [];
   /** 不在 roomLayer 里、换房间时要销毁的东西（贴图和遮罩） */
   private roomExtras: Phaser.GameObjects.GameObject[] = [];
+  /** 黑暗层（R4）和这个房间的固定光源 */
+  protected darkness?: Darkness;
+  private roomLights: (LightSource & { flicker?: boolean })[] = [];
+  private doorGlows: { rect: Phaser.GameObjects.Rectangle; x: number; y: number }[] = [];
+  /** 演出临时加的光（子类可以往里放，自己负责移除） */
+  protected extraLights: LightSource[] = [];
   /** 按脚底 y 排序的东西（物件、玩家、怪物、成员演出图）。y 就是脚底 */
   private sorted = new Set<Phaser.GameObjects.GameObject & { y: number; setDepth(d: number): unknown }>();
   /** 物件字母 → 画出来的图（演出里可以换图、隐藏） */
@@ -144,6 +151,21 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.beatShade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1).setOrigin(0).setScrollFactor(0).setDepth(450).setAlpha(0);
     this.cameras.main.setBackgroundColor('#000000');
     this.setupHudCamera();
+    // 黑暗层画在角色和物件上面（100~101），演出特效（110 以上）下面
+    this.darkness = new Darkness(this, 105);
+    this.roomLights = [];
+    this.doorGlows = [];
+    this.extraLights = [];
+    this.beatShade.setVisible(false); // 节拍改为调制黑暗层的亮度
+    this.registry.set('roomLit', !GameState.isFinal);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.registry.set('roomLit', false);
+      this.darkness?.destroy();
+      this.darkness = undefined;
+    });
+    const lit = () => this.updateDarkness();
+    this.events.on(Phaser.Scenes.Events.PRE_RENDER, lit);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.PRE_RENDER, lit));
     Audio.loop('amb', this.ambience(), 1600);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => Audio.loop('whisper', null, 300));
   }
@@ -332,6 +354,60 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.addShadow(this.player, key === 'mafuyu_crawl' || key === 'mafuyu_fallen' ? 52 : 30);
     this.player.add(body ?? fallback());
     if (body) this.applyPlayerLook(body);
+  }
+
+  // ------------------------------------------------------------ 黑暗和光
+
+  /** 房间数据里的光源，加上窗户自动生成的窗光 */
+  private buildRoomLights(def: RoomDef, isBack: Set<string>): (LightSource & { flicker?: boolean })[] {
+    const out: (LightSource & { flicker?: boolean })[] = [];
+    const cyc = GameState.save.cycle;
+    for (const l of def.lights ?? []) {
+      if (l.cycle && !l.cycle.includes(cyc)) continue;
+      out.push({
+        tex: l.tex,
+        x: this.originX + l.x * TILE,
+        y: this.originY + l.y * TILE,
+        radius: (l.scale ?? 1.5) * TILE,
+        intensity: l.intensity ?? 0.6,
+        flicker: l.flicker,
+      });
+    }
+    const windows = Object.keys(def.objects).filter((ch) => /window/.test(def.objects[ch].id) || def.objects[ch].tex === 'window_night');
+    for (const comp of this.components(def, windows)) {
+      if (this.cycleLook(def.objects[comp.ch]) === 'portrait') continue; // 绘名周目换成画像的窗：没有窗光
+      const cx = this.originX + ((comp.x0 + comp.x1 + 1) / 2) * TILE;
+      const cw = (comp.x1 - comp.x0 + 1) * TILE;
+      if (isBack.has(`${comp.x0},${comp.y1}`)) {
+        // 后墙上的窗：光落在窗下的地面
+        out.push({ tex: 'light_window', x: cx, y: this.originY + (comp.y1 + 1.8) * TILE, radius: cw * 0.5 + TILE * 1.1, intensity: 0.8, squash: 0.6 });
+      } else {
+        // 侧墙上的窗：光往房间里面斜着落
+        const inward = this.isSolid(this.charAt(comp.x0 - 1, comp.y0)) ? 1 : -1;
+        const cy = this.originY + ((comp.y0 + comp.y1 + 1) / 2) * TILE;
+        const h = (comp.y1 - comp.y0 + 1) * TILE;
+        out.push({ tex: 'light_window', x: cx + inward * TILE * 1.6, y: cy + TILE * 0.3, radius: h * 0.5 + TILE, intensity: 0.75, squash: 0.75 });
+      }
+    }
+    return out;
+  }
+
+  private updateDarkness(): void {
+    if (!this.darkness) return;
+    this.darkness.beat = this.beatShade ? this.beatShade.alpha / 0.22 : 0;
+    const t = this.time.now;
+    const lights: LightSource[] = [];
+    for (const l of this.roomLights) {
+      // 闪烁的灯：偶尔暗一下
+      const k = l.flicker && Math.sin(t * 0.013) + Math.sin(t * 0.0071) > 1.55 ? 0.15 : 1;
+      lights.push({ ...l, intensity: l.intensity * k });
+    }
+    for (const d of this.doorGlows) {
+      if (!d.rect.active) continue;
+      lights.push({ tex: 'light_door_leak', x: d.x, y: d.y, radius: TILE * 1.1, intensity: d.rect.alpha * 0.75, squash: 0.6 });
+    }
+    lights.push(...this.extraLights);
+    this.darkness.update(this.player.visible ? { x: this.player.x, y: this.player.y } : null, lights);
   }
 
   // ------------------------------------------------------------ 遮挡和影子
@@ -641,6 +717,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
 
     this.addMaterialHints();
     this.addDoorLights();
+    this.roomLights = this.buildRoomLights(def, isBack);
 
     this.frameRoom(worldW, totalH, this.originY - extra);
 
@@ -663,6 +740,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private addDoorLights(): void {
     this.lightTimers.forEach((t) => t.remove());
     this.lightTimers = [];
+    this.doorGlows = [];
     if (GameState.isFinal) return; // 终周目：灯是关着的
     const doors = this.room.doors ?? {};
     const hinted = hintRooms(GameState.save);
@@ -679,6 +757,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       const ly = onBack ? c.y + TILE / 2 - DOOR_H - 5 : c.y - TILE / 2 + 3;
       const light = this.add.rectangle(c.x, ly, 18, 4, 0xe8e0c0, 0.7).setDepth(4);
       this.roomLayer.add(light);
+      // 门灯真的照亮门前的一小块地面（后墙的门照在门下，侧面的门照在这一格）
+      this.doorGlows.push({ rect: light, x: c.x, y: onBack ? c.y + TILE * 0.8 : c.y });
       const fast = hinted.has(dest);
       const schedule = () => {
         const ev = this.time.delayedCall(fast ? Phaser.Math.Between(250, 1100) : Phaser.Math.Between(5000, 12000), () => {

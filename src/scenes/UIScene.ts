@@ -108,7 +108,7 @@ export class UIScene extends Phaser.Scene {
     Audio.setDistorted(tier4);
     const s = GameState.save;
     this.cycleLabel.setVisible(s.cycle !== 'final').setText(cycleCountLabel(s.cycleCount));
-    this.filter.update(time);
+    this.filter.update(time, this.registry.get('roomLit') === true);
     this.screenText.update(time);
   }
 
