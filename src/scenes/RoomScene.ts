@@ -405,6 +405,17 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     if (body) this.applyPlayerLook(body);
   }
 
+  /**
+   * 课桌变体：用房间 id 和格坐标做种子，同一张课桌每次进房间都是同一个样子。
+   * 大约七成是普通课桌，其余三种各一成。
+   */
+  private deskVariant(roomId: string, x: number, y: number): 'tilted' | 'fallen' | 'carved' | null {
+    let h = 2166136261;
+    for (const c of `${roomId}:${x}:${y}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+    const r = ((h >>> 0) % 1000) / 1000;
+    return r < 0.7 ? null : r < 0.8 ? 'tilted' : r < 0.9 ? 'fallen' : 'carved';
+  }
+
   // ------------------------------------------------------------ 装饰
 
   /** 装饰层：不参与碰撞，画在地板 / 立面上、物件下面。缺图时画色块 */
@@ -678,6 +689,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
 
   /**
    * 前景物：视差系数 1.15（比场景移动得快一点），透明度 0.5～0.7。
+   * 数量限制（走廊三到五处、小房间最多一处）只算绳子、缎带这类；日光灯管不算在内。
    * 灯管画在黑暗层上面（自己会亮），其余画在黑暗层下面。
    * 位置预先补偿视差，让镜头对准它时它正好在原位。
    */
@@ -1070,7 +1082,17 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         }
         continue;
       }
-      const look = this.cycleLook(obj);
+      let look = this.cycleLook(obj);
+      // N1：普通课桌按房间和位置固定地选一种样子（考场的桌子、带材料的桌子、终周目都不变）
+      let deskFx: 'tilted' | 'fallen' | null = null;
+      if (obj.id === 'desk' && look === 'school_desk' && !obj.spot && !GameState.isFinal) {
+        const v = this.deskVariant(def.id, comp.x0, comp.y0);
+        if (v) {
+          const key = tex('obj', `school_desk_${v}`);
+          if (this.textures.exists(key)) look = `school_desk_${v}`;
+          else if (v !== 'carved') deskFx = v; // 新图没到：先把普通课桌歪一下 / 放倒，代替变体
+        }
+      }
       if (look === 'portrait') {
         // 绘名周目：走廊的窗换成画像。按顺序轮换 6 张，同一条走廊里不会连续重复
         const n = (portraitIndex++ % 6) + 1;
@@ -1100,6 +1122,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         : null;
       if (img) {
         img.setTint(0xc8c8c8);
+        if (deskFx === 'tilted') img.setAngle(9);
+        if (deskFx === 'fallen') img.setAngle(-80).setTint(0xa8a8a8);
         if (obj.fit) {
           img.setScale(img.scaleX * (obj.fit.scale ?? 1));
           img.setPosition(img.x + (obj.fit.dx ?? 0) * TILE, img.y + (obj.fit.dy ?? 0) * TILE);
