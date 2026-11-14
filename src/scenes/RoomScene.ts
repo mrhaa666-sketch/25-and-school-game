@@ -32,6 +32,16 @@ const FACADE_ROWS = 3;
 const DOOR_H = Math.round(TILE * 2.4);
 const DOOR_W = Math.round(TILE * 1.5);
 
+/** 房间里的一盏固定光源，带上运行时的状态（闪烁相位、日光灯的灯管、追逐时熄灭） */
+type RoomLightState = LightSource & {
+  flicker?: boolean;
+  phase?: number;
+  lamp?: boolean;
+  broken?: boolean;
+  out?: boolean;
+  fixture?: Phaser.GameObjects.Graphics | Phaser.GameObjects.Image;
+};
+
 /** 门的种类：决定画多宽、没图时用什么颜色 */
 type DoorKind = 'class' | 'iron' | 'gate';
 const DOOR_KIND = (o: RoomObject): DoorKind | null => {
@@ -95,7 +105,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private roomExtras: Phaser.GameObjects.GameObject[] = [];
   /** 黑暗层（R4）和这个房间的固定光源 */
   protected darkness?: Darkness;
-  private roomLights: (LightSource & { flicker?: boolean })[] = [];
+  private roomLights: RoomLightState[] = [];
   private leakLights: LightSource[] = [];
   private doorGlows: { rect: Phaser.GameObjects.Rectangle; x: number; y: number }[] = [];
   /** 演出临时加的光（子类可以往里放，自己负责移除） */
@@ -539,11 +549,15 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   // ------------------------------------------------------------ 黑暗和光
 
   /** 房间数据里的光源，加上窗户自动生成的窗光 */
-  private buildRoomLights(def: RoomDef, isBack: Set<string>): (LightSource & { flicker?: boolean })[] {
-    const out: (LightSource & { flicker?: boolean })[] = [];
+  private buildRoomLights(def: RoomDef, isBack: Set<string>): RoomLightState[] {
+    const out: RoomLightState[] = [];
     const cyc = GameState.save.cycle;
     for (const l of def.lights ?? []) {
       if (l.cycle && !l.cycle.includes(cyc)) continue;
+      if (l.kind === 'lamp') {
+        out.push(this.makeLamp(l.x, l.y, l.state ?? 'on'));
+        continue;
+      }
       out.push({
         tex: l.tex,
         x: this.originX + l.x * TILE,
@@ -572,15 +586,78 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     return out;
   }
 
+  /**
+   * 日光灯：地上一块灯光（light_lamp），头顶一根灯管（lamp_tube，没有图时画色块）。
+   * 终周目灯全关：只画灭着的灯管。
+   */
+  private makeLamp(tx: number, ty: number, state: 'on' | 'flicker' | 'broken'): RoomLightState {
+    const x = this.originX + tx * TILE;
+    const y = this.originY + ty * TILE;
+    const off = state === 'broken' || GameState.isFinal;
+    // 灯管挂在头顶：画在光斑上方，盖在角色上面（N4 的前景层会接管它）
+    const fy = y - TILE * 1.7;
+    const key = tex('obj', 'lamp_tube');
+    let fixture: Phaser.GameObjects.Graphics | Phaser.GameObjects.Image;
+    if (this.textures.exists(key)) {
+      fixture = this.add.image(x, fy, key).setDisplaySize(TILE * 1.6, TILE * 0.4).setTint(off ? 0x555555 : 0xffffff);
+    } else {
+      const g = this.add.graphics({ x, y: fy });
+      g.fillStyle(0x1c1c20, 1).fillRect(-TILE * 0.8, -5, TILE * 1.6, 10);
+      g.fillStyle(off ? 0x46464c : 0xe6ebee, 1).fillRect(-TILE * 0.72, -2, TILE * 1.44, 4);
+      fixture = g;
+    }
+    fixture.setDepth(106);
+    this.roomExtras.push(fixture);
+    return {
+      tex: 'light_lamp',
+      x,
+      y,
+      radius: TILE * 2.3,
+      intensity: off ? 0 : 0.7,
+      squash: 0.65,
+      flicker: state === 'flicker',
+      phase: tx * 1.7 + ty,
+      lamp: true,
+      broken: off,
+      fixture,
+    };
+  }
+
+  /** 追逐时，追逐者身后的日光灯一盏盏熄灭（只是画面效果，不碰追逐的任何数值） */
+  private chaseLampsOut(): void {
+    for (const a of this.actors) {
+      if (!a.obj.active || !a.obj.visible) continue;
+      const vx = a.obj.x - this.pos.x;
+      const vy = a.obj.y - this.pos.y;
+      const len = Math.hypot(vx, vy);
+      if (len < 1) continue;
+      for (const l of this.roomLights) {
+        if (!l.lamp || l.out || l.broken) continue;
+        // 灯在追逐者身后（从玩家看过去，比追逐者更远）至少一格
+        const along = ((l.x - a.obj.x) * vx + (l.y - a.obj.y) * vy) / len;
+        if (along > TILE) {
+          l.out = true;
+          // 熄灭前闪两下
+          l.flicker = true;
+          this.time.delayedCall(260, () => (l.flicker = false, l.intensity = 0));
+        }
+      }
+    }
+  }
+
   private updateDarkness(): void {
     if (!this.darkness) return;
     this.darkness.beat = this.beatShade ? this.beatShade.alpha / 0.22 : 0;
     const t = this.time.now;
     const lights: LightSource[] = [];
+    this.chaseLampsOut();
     for (const l of this.roomLights) {
-      // 闪烁的灯：偶尔暗一下
-      const k = l.flicker && Math.sin(t * 0.013) + Math.sin(t * 0.0071) > 1.55 ? 0.15 : 1;
-      lights.push({ ...l, intensity: l.intensity * k });
+      // 闪烁的灯：偶尔暗一下，各盏灯错开
+      const ph = l.phase ?? 0;
+      const k = l.flicker && Math.sin(t * 0.013 + ph) + Math.sin(t * 0.0071 + ph * 2.3) > 1.55 ? 0.15 : 1;
+      const lit = l.intensity * k;
+      if (l.fixture) l.fixture.setAlpha(l.broken ? 1 : 0.35 + 0.65 * (lit / 0.7) * (1 - this.darkness.beat * 0.6));
+      if (lit > 0) lights.push({ tex: l.tex, x: l.x, y: l.y, radius: l.radius, intensity: lit, squash: l.squash });
     }
     for (const d of this.doorGlows) {
       if (!d.rect.active) continue;

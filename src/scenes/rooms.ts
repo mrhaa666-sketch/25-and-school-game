@@ -46,6 +46,10 @@ export interface RoomLight {
   intensity?: number;
   /** 是否闪烁 */
   flicker?: boolean;
+  /** 'lamp'：日光灯（N3）。地上一块灯光，头顶一根灯管 */
+  kind?: 'lamp';
+  /** 日光灯的状态：常亮 / 闪烁 / 坏掉 */
+  state?: 'on' | 'flicker' | 'broken';
   /** 只在这些周目出现 */
   cycle?: (1 | 2 | 3 | 4 | 'final')[];
 }
@@ -99,6 +103,17 @@ export interface RoomDef {
 const DESK = { id: 'desk', color: 0x4a4038, label: '桌', tex: 'school_desk' };
 const CLASS_DOOR = { id: 'class_door', color: 0x2c2620, label: '门', tex: 'class_door', wall: true };
 
+/** 日光灯的状态，按顺序轮着来，常亮的多一些 */
+const LAMP_STATES = ['on', 'flicker', 'on', 'broken', 'on', 'on', 'flicker'] as const;
+
+/** 一排日光灯：y 行，从 x0 到 x1 每 step 格一盏。seed 让各个房间的状态排列不同 */
+function lampRow(y: number, x0: number, x1: number, step: number, seed = 0): RoomLight[] {
+  const out: RoomLight[] = [];
+  let i = seed;
+  for (let x = x0; x <= x1; x += step) out.push({ kind: 'lamp', x, y, state: LAMP_STATES[i++ % LAMP_STATES.length] });
+  return out;
+}
+
 // ---------------------------------------------------------------- 程序生成的房间
 
 /** 被无限拉长的三楼走廊（追逐战 2）。真正的长度足够跑 30 秒以上 */
@@ -115,6 +130,7 @@ function buildLongCorridor(): RoomDef {
     id: 'corridor3_long',
     floor: 3,
     map: [top.join(''), floor, floor, floor, bottom.join('')],
+    lights: lampRow(2.5, 4, W - 4, 6, 1),
     objects: {
       c: CLASS_DOOR,
       B: { id: 'burst_door', color: 0x3a2a24, label: '门', tex: 'class_door', wall: true },
@@ -203,6 +219,7 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'corridor4',
     floor: 4,
     doors: { '1': 'infirmary', '2': 'classroom4', '3': 'art_prep4', '4': 'locked_class4', '5': 'music_prep4' },
+    lights: lampRow(2.5, 3, 28, 5, 0),
     map: [
       '##2#W##3###1##4#W###5###W#####SS',
       '#.............................SS',
@@ -294,6 +311,7 @@ export const ROOMS: Record<string, RoomDef> = {
   classroom4: {
     id: 'classroom4',
     floor: 4,
+    lights: [...lampRow(4, 4, 14, 5, 3)],
     map: [
       '########KKKK######',
       '#.......LL.......#',
@@ -324,6 +342,7 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'classroom3',
     floor: 3,
     doors: { '1': 'corridor3_long' },
+    lights: [...lampRow(4.5, 4, 14, 5, 4)],
     map: [
       '######KKKK########',
       '#.......LL.......#',
@@ -355,6 +374,7 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'exam_room',
     floor: 3,
     doors: { '1': 'stairs2' },
+    lights: [...lampRow(4.5, 3, 13, 5, 5)],
     map: [
       '#####KKKKKK##C##',
       '#.......T......#',
@@ -410,6 +430,7 @@ export const ROOMS: Record<string, RoomDef> = {
       { tex: 'mizuki_ribbon_02', x: 21.5, y: 3.2, scale: 0.7, angle: 40, cycle: [3] },
       { tex: 'mizuki_ribbon_03', x: 25.8, y: 1.5, scale: 0.6, angle: -60, cycle: [3] },
     ],
+    lights: lampRow(2.5, 3, 29, 6, 2),
     map: [
       '#####c######c######c#######c####',
       '#..............................#',
@@ -454,6 +475,7 @@ export const ROOMS: Record<string, RoomDef> = {
   music_room: {
     id: 'music_room',
     floor: 1,
+    lights: [...lampRow(4.5, 5, 13, 8, 1)],
     map: [
       '##################',
       '#....PPPP........#',
@@ -541,6 +563,7 @@ ROOMS.corridor3_final = {
   id: 'corridor3_final',
   alias: 'corridor3_long',
   floor: 3,
+  lights: lampRow(2.5, 3, 21, 6, 2),
   map: [
     '#####1######2##########SS',
     '#......................SS',
