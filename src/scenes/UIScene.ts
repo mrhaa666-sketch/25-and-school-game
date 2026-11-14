@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { EV, GameState } from '../core/GameState';
-import { tUi } from '../core/text';
+import { GAME_WIDTH } from '../core/constants';
+import { cycleCountLabel, tUi } from '../core/text';
+import { textStyle } from '../systems/style';
 import { DialogueBox } from '../systems/DialogueBox';
 import { InventoryUI } from '../systems/InventoryUI';
 import { ListMenu } from '../systems/ListMenu';
@@ -51,6 +53,7 @@ export class UIScene extends Phaser.Scene {
   private bag!: InventoryUI;
   private pause!: ListMenu;
   private debug?: ListMenu;
+  private cycleLabel!: Phaser.GameObjects.Text;
   private activeModal: Modal | null = null;
   private target: PlayTarget | null = null;
 
@@ -62,6 +65,8 @@ export class UIScene extends Phaser.Scene {
     this.filter = new VisualFilter(this);
     this.screenText = new ScreenText(this);
     this.hud = new SanityHUD(this);
+    // 右上角：第几周目（补充周目显示「第五周目」……）。终周目隐藏
+    this.cycleLabel = this.add.text(GAME_WIDTH - 28, 22, '', textStyle(16, '#6a6660')).setOrigin(1, 0).setDepth(800);
     this.dialogueBox = new DialogueBox(this);
     this.phone = new PhoneUI(this);
     this.bag = new InventoryUI(this);
@@ -89,6 +94,8 @@ export class UIScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     this.hud.update(delta);
+    const s = GameState.save;
+    this.cycleLabel.setVisible(s.cycle !== 'final').setText(cycleCountLabel(s.cycleCount));
     this.filter.update(time);
     this.screenText.update(time);
   }

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, MOVE, TILE } from '../core/constants';
 import { GameState } from '../core/GameState';
-import { hintLevel, MATERIALS, sanityTier } from '../core/progress';
+import { hintLevel, hintRooms, MATERIALS, sanityTier } from '../core/progress';
 import { tLines, tStory, tUi } from '../core/text';
 import type { MaterialDef } from '../core/types';
 import { makeFigure, PALETTE } from '../systems/figures';
@@ -62,6 +62,11 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private ghostTimer = 0;
   private transitioning = false;
   private visited = new Set<string>();
+  private lightTimers: Phaser.Time.TimerEvent[] = [];
+  /** 补充周目第 3 次提示：已经「看过一眼」的楼层 */
+  private lookedFloors = new Set<number>();
+  /** 停下来看的剩余时间（毫秒），期间不能移动 */
+  private lookMs = 0;
 
   protected abstract onObject(obj: RoomObject, tile: { x: number; y: number }): void;
   protected onEnterRoom(_roomId: string, _firstTime: boolean): void {}
@@ -80,6 +85,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.locked = false;
     this.transitioning = false;
     this.visited = new Set();
+    this.lookedFloors = new Set();
+    this.lookMs = 0;
+    this.lightTimers = [];
     this.stamina = MOVE.staminaMax;
     this.facing = 'down';
 
@@ -227,6 +235,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     }
 
     this.addMaterialHints();
+    this.addDoorLights();
 
     // 镜头：房间比屏幕大时跟随玩家
     const cam = this.cameras.main;
@@ -247,6 +256,69 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const first = !this.visited.has(def.id);
     this.visited.add(def.id);
     this.onEnterRoom(def.id, first);
+    this.maybeLookToward();
+  }
+
+  // ------------------------------------------------------------ 补充周目的环境提示
+
+  /**
+   * 门口的灯。平时偶尔闪一下；补充周目里，没拿到的材料所在房间的门口闪得更频繁。
+   */
+  private addDoorLights(): void {
+    this.lightTimers.forEach((t) => t.remove());
+    this.lightTimers = [];
+    const doors = this.room.doors ?? {};
+    const hinted = hintRooms(GameState.save);
+    const flick = (light: Phaser.GameObjects.Rectangle) => {
+      light.setAlpha(0.15);
+      this.time.delayedCall(Phaser.Math.Between(40, 110), () => light.active && light.setAlpha(0.7));
+    };
+    for (const [ch, dest] of Object.entries(doors)) {
+      const t = this.findTile(ch);
+      if (!t) continue;
+      const c = this.tileCenter(t.x, t.y);
+      // 门在上墙时灯画在门上方，其余画在门旁边
+      const light = this.add.rectangle(c.x, c.y - TILE / 2 + 3, 18, 4, 0xe8e0c0, 0.7).setDepth(4);
+      this.roomLayer.add(light);
+      const fast = hinted.has(dest);
+      const schedule = () => {
+        const ev = this.time.delayedCall(fast ? Phaser.Math.Between(250, 1100) : Phaser.Math.Between(5000, 12000), () => {
+          if (!light.active) return;
+          flick(light);
+          if (fast && Math.random() < 0.5) this.time.delayedCall(160, () => light.active && flick(light));
+          schedule();
+        });
+        this.lightTimers.push(ev);
+      };
+      schedule();
+    }
+  }
+
+  /**
+   * 补充周目第 3 次起：第一次走到材料所在楼层时，停下来看向材料的方向一秒。
+   * 材料在这个房间里就看材料，否则看通往材料房间的门。
+   */
+  private maybeLookToward(): void {
+    const floor = this.room.floor;
+    if (floor === undefined || hintLevel(GameState.save) < 3 || this.lookedFloors.has(floor)) return;
+    let target: { x: number; y: number } | undefined;
+    const here = this.materialsHere()[0];
+    if (here) {
+      const entry = Object.entries(this.room.objects).find(([, o]) => o.spot === here.spot);
+      if (entry) target = this.objectCenter(entry[0]);
+    }
+    if (!target) {
+      const hinted = hintRooms(GameState.save);
+      const door = Object.entries(this.room.doors ?? {}).find(([, dest]) => hinted.has(dest));
+      if (door) target = this.objectCenter(door[0]);
+    }
+    if (!target) return;
+    this.lookedFloors.add(floor);
+    const dx = target.x - this.pos.x;
+    const dy = target.y - this.pos.y;
+    this.facing = Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
+    this.syncPlayer();
+    this.lookMs = 1000;
   }
 
   protected placePlayer(tx: number, ty: number): void {
@@ -448,7 +520,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     // 帧率很低时截断，玩家和怪物用同一个 delta，保证追逐的相对速度不变
     const delta = Math.min(rawDelta, 50);
     const dt = delta / 1000;
-    const canMove = !this.locked && !this.transitioning && !this.ui.isBlocking();
+    if (this.lookMs > 0 && !this.ui.isBlocking()) this.lookMs -= delta;
+    const canMove = !this.locked && !this.transitioning && !this.ui.isBlocking() && this.lookMs <= 0;
     let running = false;
     this.moving = false;
 

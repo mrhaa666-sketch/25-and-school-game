@@ -37,6 +37,13 @@ export interface RoomDef {
   spawn?: { x: number; y: number };
   floorColor?: string;
   wallColor?: string;
+  /** 所在楼层（补充周目第 3 次提示：走到材料所在楼层时停下来看一眼） */
+  floor?: number;
+  /**
+   * 门（出口数字或门物件的字母）通往哪个房间。用于补充周目的提示：
+   * 材料所在房间的门口，灯闪得更频繁。
+   */
+  doors?: Record<string, string>;
 }
 
 const DESK = { id: 'desk', color: 0x4a4038, label: '桌' };
@@ -56,6 +63,7 @@ function buildLongCorridor(): RoomDef {
   const floor = '#' + '.'.repeat(W - 1);
   return {
     id: 'corridor3_long',
+    floor: 3,
     map: [top.join(''), floor, floor, floor, bottom.join('')],
     objects: {
       c: CLASS_DOOR,
@@ -115,6 +123,8 @@ export const ROOMS: Record<string, RoomDef> = {
   // ------------------------------------------------------------ 第二幕
   infirmary: {
     id: 'infirmary',
+    floor: 4,
+    doors: { '1': 'corridor4' },
     map: [
       '##########M#######',
       '#BB..........KKK.#',
@@ -139,6 +149,8 @@ export const ROOMS: Record<string, RoomDef> = {
 
   corridor4: {
     id: 'corridor4',
+    floor: 4,
+    doors: { '1': 'infirmary', '2': 'classroom4' },
     map: [
       '##2#W######1####W#######W#####SS',
       '#.............................SS',
@@ -156,6 +168,7 @@ export const ROOMS: Record<string, RoomDef> = {
   // ------------------------------------------------------------ 第三幕
   classroom4: {
     id: 'classroom4',
+    floor: 4,
     map: [
       '########KKKK######',
       '#.......LL.......#',
@@ -184,6 +197,8 @@ export const ROOMS: Record<string, RoomDef> = {
   // ------------------------------------------------------------ 第四幕
   classroom3: {
     id: 'classroom3',
+    floor: 3,
+    doors: { '1': 'corridor3_long' },
     map: [
       '######KKKK########',
       '#.......LL.......#',
@@ -212,6 +227,8 @@ export const ROOMS: Record<string, RoomDef> = {
   // ------------------------------------------------------------ 第五幕
   exam_room: {
     id: 'exam_room',
+    floor: 3,
+    doors: { '1': 'stairs2' },
     map: [
       '#####KKKKKK##C##',
       '#.......T......#',
@@ -238,6 +255,8 @@ export const ROOMS: Record<string, RoomDef> = {
   // ------------------------------------------------------------ 第六幕
   stairs2: {
     id: 'stairs2',
+    floor: 2,
+    doors: { '1': 'corridor2' },
     map: [
       '####II####',
       '#........#',
@@ -256,6 +275,8 @@ export const ROOMS: Record<string, RoomDef> = {
 
   corridor2: {
     id: 'corridor2',
+    floor: 2,
+    doors: { '1': 'stairs2', T: 'pink_room2', P: 'pink_room2' },
     map: [
       '#####c######c######c#######c####',
       '#..............................#',
@@ -273,6 +294,7 @@ export const ROOMS: Record<string, RoomDef> = {
 
   pink_room2: {
     id: 'pink_room2',
+    floor: 2,
     map: [
       '############',
       '#.tt.......#',
@@ -297,6 +319,7 @@ export const ROOMS: Record<string, RoomDef> = {
   // ------------------------------------------------------------ 第八、九幕
   music_room: {
     id: 'music_room',
+    floor: 1,
     map: [
       '##################',
       '#....PPPP........#',
@@ -321,6 +344,7 @@ export const ROOMS: Record<string, RoomDef> = {
   // ------------------------------------------------------------ 第十幕
   lobby: {
     id: 'lobby',
+    floor: 1,
     map: [
       '########1#######',
       '#..............#',

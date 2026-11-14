@@ -82,6 +82,16 @@ export function hintLevel(s: SaveData): 0 | 1 | 2 | 3 {
   return (n >= 3 ? 3 : n <= 0 ? 0 : n) as 0 | 1 | 2 | 3;
 }
 
+/**
+ * 补充周目里需要提示的房间：当前主题还没拿到的材料所在的房间。
+ * 不是补充周目（或终周目）时为空。
+ */
+export function hintRooms(s: SaveData): Set<string> {
+  if (hintLevel(s) < 1 || s.cycle === 'final') return new Set();
+  const theme = s.cycle;
+  return new Set(MATERIALS.filter((m) => m.theme === theme && !s.materials.includes(m.id)).map((m) => m.room));
+}
+
 // ---------------------------------------------------------------- 精神值
 
 export type SanityTier = 1 | 2 | 3 | 4;

@@ -41,6 +41,8 @@ export interface MaterialDef {
   room: string;
   spot: string;
   locationHint: string;
+  /** 补充周目不在背包里显示地点文字（「白卷」只靠考场的挂钟提示） */
+  noTextHint?: boolean;
   desc: string;
 }
 

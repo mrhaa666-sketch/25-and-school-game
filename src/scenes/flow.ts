@@ -5,7 +5,7 @@
 import type Phaser from 'phaser';
 import { ENDINGS, GameState } from '../core/GameState';
 import * as P from '../core/progress';
-import { tLines, tRaw, tUi } from '../core/text';
+import { cycleCountLabel, tLines, tRaw, tUi } from '../core/text';
 import type { StoryData } from './StoryScene';
 
 export const SCENE = {
@@ -143,6 +143,7 @@ export function playTransition(scene: Phaser.Scene, kind: TransitionKind): void 
   const s = GameState.save;
   const lines: string[] = [];
   if (kind === 'supplementary') {
+    lines.push(...tLines('supplementary.flicker', s.cycle));
     lines.push(...tLines('transition.wake', s.cycle).slice(0, 1));
     lines.push(...tLines('supplementary.line', s.cycle));
   } else {
@@ -153,5 +154,6 @@ export function playTransition(scene: Phaser.Scene, kind: TransitionKind): void 
     if (garbleGrew) lines.push(...tLines('transition.phone', s.cycle));
     lines.push(`「${tRaw<string>(kind === 'final' ? 'voice.last' : 'voice.continue')}」`);
   }
-  showStory(scene, { lines, onDone: (st) => startAct(st, 2) });
+  const header = s.cycle === 'final' ? tUi('finalCycle') : cycleCountLabel(s.cycleCount);
+  showStory(scene, { header, lines, onDone: (st) => startAct(st, 2) });
 }

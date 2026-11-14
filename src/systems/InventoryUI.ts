@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { GameState } from '../core/GameState';
-import { getMaterial, hintLevel, isSupplementary, materialsOfTheme, starString, themeStars } from '../core/progress';
+import { getMaterial, hintLevel, isSupplementary, materialsOfTheme, themeStars } from '../core/progress';
 import { tUi, tUiList } from '../core/text';
 import { THEMES, type ThemeId } from '../core/types';
 import type { Modal, UiAction } from './Modal';
@@ -75,19 +75,22 @@ export class InventoryUI implements Modal {
         this.dynamic.add(hl);
       }
       this.dynamic.add(this.scene.add.text(X + 36, y, names[theme - 1], textStyle(22, color)));
-      this.dynamic.add(this.scene.add.text(X + 150, y - 2, starString(themeStars(s.materials, theme)), textStyle(24, color)));
+      // 三个位置逐个画，方便在对应的 ？ 正下方放提示
+      const SLOT_X = (i: number) => X + 170 + i * 58;
+      themeStars(s.materials, theme).forEach((got, i) => {
+        this.dynamic.add(this.scene.add.text(SLOT_X(i), y + 12, got ? '⭐' : '？', textStyle(24, color)).setOrigin(0.5));
+      });
 
       // 补充周目的提示：第 2 次起在 ？ 下方出现地点文字（第 2 次模糊，第 3 次起清晰）
       if (isCurrent && isSupplementary(s) && hint >= 2) {
-        const mats = materialsOfTheme(theme);
-        mats.forEach((m, i) => {
-          if (s.materials.includes(m.id)) return;
+        materialsOfTheme(theme).forEach((m, i) => {
+          if (s.materials.includes(m.id) || m.noTextHint) return;
           const label = hint >= 3 ? m.locationHint : `……${m.locationHint}……`;
-          const t = this.scene.add.text(X + 150 + i * 30, y + 30, label, textStyle(13, '#9a968e')).setAngle(8);
-          if (hint === 2) t.setAlpha(0.45).setBlendMode(Phaser.BlendModes.ADD);
+          const t = this.scene.add.text(SLOT_X(i), y + 36 + (i % 2) * 16, label, textStyle(12, '#9a968e')).setOrigin(0.5, 0);
+          if (hint === 2) t.setAlpha(0.4).preFX?.addBlur(0, 1, 1, 0.8);
           this.dynamic.add(t);
         });
-        y += 22;
+        y += 38;
       }
       y += 64;
     }

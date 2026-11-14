@@ -1,6 +1,6 @@
 [
   { "id": "mafuyu_checkup",    "theme": 1, "slot": 0, "name": "体检表",               "room": "infirmary",      "spot": "bedhead",   "locationHint": "医务室",     "desc": "所有项目都是满分。备注栏写着「请继续保持」。" },
-  { "id": "mafuyu_blank_paper","theme": 1, "slot": 1, "name": "白卷",                 "room": "exam_room",      "spot": "blank_paper","locationHint": "考场",      "desc": "一张什么都没写的试卷。" },
+  { "id": "mafuyu_blank_paper","theme": 1, "slot": 1, "name": "白卷",                 "room": "exam_room",      "spot": "blank_paper","locationHint": "考场", "noTextHint": true, "desc": "一张什么都没写的试卷。" },
   { "id": "mafuyu_nameplate",  "theme": 1, "slot": 2, "name": "小学的名牌",           "room": "classroom4",     "spot": "lectern_drawer","locationHint": "四楼教室", "desc": "「梦想」栏只写了一个字：「我」。" },
   { "id": "ena_sketch",        "theme": 2, "slot": 0, "name": "速写本残页",           "room": "art_prep4",      "spot": "desk",      "locationHint": "美术准备室", "desc": "画的是 Nightcord 里四个人的头像，画得很随便。" },
   { "id": "ena_comment",       "theme": 2, "slot": 1, "name": "揉皱的评语单",         "room": "corridor3",      "spot": "trash_can", "locationHint": "三楼走廊",   "desc": "「技巧尚可，缺乏个人特色。」下面有用力划过的痕迹。" },
