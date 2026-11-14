@@ -24,6 +24,8 @@ export interface RoomObject {
   tex?: string;
   /** 挂在墙上 / 嵌在墙里的东西：宽度对齐物件，允许向上超出这一格（黑板、窗、门） */
   wall?: boolean;
+  /** 个别物件的绘制微调（R7）：缩放倍数，x / y 偏移（格）。只影响画面，不影响碰撞 */
+  fit?: { scale?: number; dx?: number; dy?: number };
 }
 
 export interface RoomExit {

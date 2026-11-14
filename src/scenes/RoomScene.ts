@@ -100,6 +100,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private doorGlows: { rect: Phaser.GameObjects.Rectangle; x: number; y: number }[] = [];
   /** 演出临时加的光（子类可以往里放，自己负责移除） */
   protected extraLights: LightSource[] = [];
+  /** 场上的怪物（N7：在黑暗里保留一个看得见的轮廓） */
+  private actors = new Set<Actor>();
   /** 按脚底 y 排序的东西（物件、玩家、怪物、成员演出图）。y 就是脚底 */
   private sorted = new Set<Phaser.GameObjects.GameObject & { y: number; setDepth(d: number): unknown }>();
   /** 物件字母 → 画出来的图（演出里可以换图、隐藏） */
@@ -172,6 +174,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.roomLights = [];
     this.doorGlows = [];
     this.extraLights = [];
+    this.actors = new Set();
     this.beatShade.setVisible(false); // 节拍改为调制黑暗层的亮度
     this.registry.set('roomLit', !GameState.isFinal);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -584,6 +587,17 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       lights.push({ tex: 'light_door_leak', x: d.x, y: d.y, radius: TILE * 1.1, intensity: d.rect.alpha * 0.75, squash: 0.6 });
     }
     lights.push(...this.extraLights);
+    // N7：怪物画在黑暗层下面，进到光里才看得清；光圈外给它一点微弱的光，
+    // 保证始终能看出轮廓、判断位置和距离，不让追逐变难
+    for (const a of this.actors) {
+      if (!a.obj.active) {
+        this.actors.delete(a);
+        continue;
+      }
+      if (!a.obj.visible || a.obj.alpha < 0.05) continue;
+      const b = a.obj.getBounds();
+      lights.push({ x: b.centerX, y: b.centerY, radius: Math.max(b.width, b.height) * 0.75 + 10, intensity: 0.5 * a.obj.alpha });
+    }
     this.darkness.update(this.player.visible ? { x: this.player.x, y: this.player.y } : null, lights);
   }
 
@@ -893,6 +907,10 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         : null;
       if (img) {
         img.setTint(0xc8c8c8);
+        if (obj.fit) {
+          img.setScale(img.scaleX * (obj.fit.scale ?? 1));
+          img.setPosition(img.x + (obj.fit.dx ?? 0) * TILE, img.y + (obj.fit.dy ?? 0) * TILE);
+        }
         if (obj.wall) this.roomLayer.add(img);
         else {
           // 立在地上的物件：和角色一起按脚底的 y 排序，脚下一块椭圆阴影
@@ -1233,7 +1251,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     obj.setPosition(x, y);
     this.addShadow(obj, Math.max(30, w || 30));
     this.ySort(obj);
-    return { obj, x, y, speed, w, h };
+    const actor = { obj, x, y, speed, w, h };
+    this.actors.add(actor);
+    return actor;
   }
 
   /** 朝目标点移动，有碰撞盒时沿墙滑动 */
