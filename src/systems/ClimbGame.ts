@@ -2,7 +2,11 @@ import Phaser from 'phaser';
 import { CHASE, GAME_HEIGHT, GAME_WIDTH, SANITY_COST, TIMERS } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { makeFigure, makeMonster, PALETTE } from './figures';
+import { MAFUYU_STAND_REF, poseImage } from './sprites';
 import { textStyle } from './style';
+
+/** 攀绳图里双手（拳头）的横向位置，占图宽的比例。对齐到绳子上 */
+const CLIMB_HAND_X = 0.3;
 
 export interface ClimbOptions {
   monsterColor: number;
@@ -37,7 +41,11 @@ export function runClimb(scene: Phaser.Scene, o: ClimbOptions): Promise<boolean>
     root.add(rope);
     const monster = makeMonster(scene, cx, topY - 4, o.monsterColor, o.monsterName, 0.9).setVisible(false);
     root.add(monster);
-    const climber = makeFigure(scene, cx, topY + 40, { ...PALETTE.mafuyu });
+    const climber = scene.add.container(cx, topY + 40);
+    // 攀绳图：手在绳子上，横向对齐到绳子
+    const climbImg = poseImage(scene, 'mafuyu_climb', 120, MAFUYU_STAND_REF);
+    if (climbImg) climber.add(climbImg.setOrigin(CLIMB_HAND_X, climbImg.originY));
+    else climber.add(makeFigure(scene, 0, 0, { ...PALETTE.mafuyu }));
     root.add(climber);
     const hint = scene.add.text(cx, GAME_HEIGHT - 40, o.hint, textStyle(16, '#7d7a74')).setOrigin(0.5);
     root.add(hint);

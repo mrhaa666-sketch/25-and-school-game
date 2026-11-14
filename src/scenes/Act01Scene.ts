@@ -1,5 +1,11 @@
 import { GameState } from '../core/GameState';
+import Phaser from 'phaser';
 import { makeFigure, PALETTE } from '../systems/figures';
+import { PLAYER_HEIGHT } from '../systems/playerSprite';
+import { officialFrames, poseImage } from '../systems/sprites';
+
+/** 小学生版真冬的身高（真冬是 PLAYER_HEIGHT） */
+const CHILD_HEIGHT = 52;
 import { actKey, startAct } from './flow';
 import { RoomScene } from './RoomScene';
 
@@ -32,19 +38,24 @@ export class Act01Scene extends RoomScene {
     cam.fadeIn(1500, 0, 0, 0);
 
     // 其他三人：视线不朝走廊那边
-    const others = [
-      makeFigure(this, 0, 0, { ...PALETTE.kanade, label: '奏', pose: 'stand' }),
-      makeFigure(this, 0, 0, { ...PALETTE.ena, label: '绘名', pose: 'stand' }),
-      makeFigure(this, 0, 0, { ...PALETTE.mizuki, label: '瑞希', pose: 'stand' }),
-    ];
+    const member = (who: 'kanade' | 'ena' | 'mizuki', label: string) => {
+      const c = this.add.container(0, 0);
+      const front = officialFrames(who, 'blink')[0];
+      const img = poseImage(this, front, PLAYER_HEIGHT, officialFrames(who, 'blink'));
+      c.add(img ?? makeFigure(this, 0, 0, { ...PALETTE[who], label, pose: 'stand' }));
+      return c;
+    };
+    const others = [member('kanade', '奏'), member('ena', '绘名'), member('mizuki', '瑞希')];
     const spots = [this.tileCenter(2, 2), this.tileCenter(2, 4), this.tileCenter(1, 3)];
-    others.forEach((f, i) => f.setPosition(spots[i].x, spots[i].y + 8).setDepth(90));
+    others.forEach((f, i) => f.setPosition(spots[i].x, spots[i].y + 8).setDepth(90 + i));
     this.facing = 'right';
     this.syncPlayer();
 
     // 走廊尽头的小女孩：小学制服，发型和真冬小时候一样（不点破）
     const end = this.tileCenter(29, 3);
-    const girl = makeFigure(this, end.x, end.y + 8, { ...PALETTE.mafuyuChild, pose: 'away', scale: 0.75 }).setDepth(95);
+    const girl = this.add.container(end.x, end.y + 8).setDepth(95);
+    const girlImg = poseImage(this, 'mafuyu_child_back', CHILD_HEIGHT);
+    girl.add(girlImg ?? makeFigure(this, 0, 0, { ...PALETTE.mafuyuChild, pose: 'away', scale: 0.75 }));
 
     await this.wait(1600);
     await this.say(this.text('act01.opening'));
@@ -54,20 +65,25 @@ export class Act01Scene extends RoomScene {
     await this.walkPlayerTo(end.x - 70, this.pos.y, 125);
     await this.wait(900);
 
-    // 头旋转 180 度：占位演出——背影换成正脸，嘴角流下黑色液体
-    const head = girl.list[2] as Phaser.GameObjects.Arc;
-    await this.tween({ targets: head, scaleX: 0, duration: 450, ease: 'Sine.easeIn' });
-    head.setFillStyle(0xd9cfe8);
-    const smile = this.add.arc(0, -32, 5, 20, 160, false, 0x000000, 0).setStrokeStyle(1.5, 0x111111);
-    const drip = this.add.rectangle(3, -28, 2, 1, 0x050505).setOrigin(0.5, 0);
-    girl.add([smile, drip]);
-    await this.tween({ targets: head, scaleX: 1, duration: 450, ease: 'Sine.easeOut' });
-    this.tween({ targets: drip, scaleY: 22, duration: 1400 });
-    await this.wait(1600);
+    // 头旋转 180 度：脸转过来，嘴角流下黑色液体
+    if (girlImg && this.textures.exists('mafuyu_child_turned')) {
+      await this.tween({ targets: girlImg, scaleX: girlImg.scaleX * 0.15, duration: 380, ease: 'Sine.easeIn' });
+      girlImg.setTexture('mafuyu_child_turned');
+      this.cameras.main.shake(160, 0.004);
+      await this.tween({ targets: girlImg, scaleX: girlImg.scaleY, duration: 380, ease: 'Sine.easeOut' });
+    } else {
+      const head = (girl.list[0] as Phaser.GameObjects.Container).list[2] as Phaser.GameObjects.Arc;
+      await this.tween({ targets: head, scaleX: 0, duration: 450, ease: 'Sine.easeIn' });
+      head.setFillStyle(0xd9cfe8);
+      await this.tween({ targets: head, scaleX: 1, duration: 450, ease: 'Sine.easeOut' });
+    }
+    await this.wait(1800);
 
     // 黑屏，真冬晕倒
-    cam.fadeOut(120, 0, 0, 0);
-    await this.wait(1500);
+    cam.flash(80, 0, 0, 0);
+    this.setPlayerPose('mafuyu_fallen', () => makeFigure(this, 0, 0, { ...PALETTE.mafuyu, pose: 'lie' }));
+    cam.fadeOut(1400, 0, 0, 0);
+    await this.wait(2600);
     if (GameState.save.act === 1) startAct(this, 2);
   }
 }

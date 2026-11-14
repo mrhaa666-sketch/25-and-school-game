@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { parseLine, tUi } from '../core/text';
+import { poseImage } from '../systems/sprites';
 import { COLORS, textStyle } from '../systems/style';
 
 export interface StoryData {
@@ -9,6 +10,8 @@ export interface StoryData {
   /** 开场先在屏幕中央短暂显示的大字（大门的 ⭐/？ 进度） */
   flash?: string;
   lines: string[];
+  /** 句子上方显示的一张图（素材 key），缺失就不显示 */
+  image?: string;
   onDone: (scene: Phaser.Scene) => void;
 }
 
@@ -44,7 +47,13 @@ export class StoryScene extends Phaser.Scene {
     this.body = this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', textStyle(28, COLORS.text, { align: 'center', wordWrap: { width: 900, useAdvancedWrap: true }, lineSpacing: 10 }))
       .setOrigin(0.5);
-    this.speaker = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50, '', textStyle(16, '#8a8296')).setOrigin(0.5);
+    if (this.data_.image && this.textures.exists(this.data_.image)) {
+      const img = poseImage(this, this.data_.image, 150);
+      img?.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 10).setAlpha(0);
+      if (img) this.tweens.add({ targets: img, alpha: 0.9, duration: 1600, delay: 300 });
+      this.body.setY(GAME_HEIGHT / 2 + 70);
+    }
+    this.speaker = this.add.text(GAME_WIDTH / 2, this.body.y - 50, '', textStyle(16, '#8a8296')).setOrigin(0.5);
     this.hint = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 60, tUi('pressToContinue'), textStyle(14, '#4a4844')).setOrigin(0.5).setAlpha(0);
 
     const kb = this.input.keyboard!;

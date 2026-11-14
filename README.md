@@ -25,6 +25,18 @@ npm run build      # 类型检查 + 打包到 dist/
 | 暂停 | Esc |
 | 调试面板 | F2（仅 `npm run dev` 或网址带 `?debug`） |
 
+## 美术素材
+
+- 图片放在 `assets/` 下，路径和 `docs/art-prompts.md` 一致。缺哪张，游戏里那部分就继续用色块占位，不会报错。
+- `assets/sprites/characters/`：GPT 生成的真冬（侧面、爬行、攀绳、晕倒、坐下的背影）和幼年真冬，已提交。
+- **官方小人素材不提交**（仓库是公开的），需要在本地放好，用于真冬的正面 / 背面走路和第一幕的三个人：
+
+```
+assets/sprites/official/
+  mafuyu/{walk_front,walk_back,blink}/01.png …   ← 真冬小人包解压到 mafuyu/ 下
+  kanade/  ena/  mizuki/                          ← 25 时小人包直接解压到 official/ 下
+```
+
 ## 目录
 
 ```

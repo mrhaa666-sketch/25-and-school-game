@@ -80,6 +80,12 @@ export function endingLines(id: number): string[] {
  * 触发结局。1~8：演出后回到当前周目开头；9：演出后直接进入补充周目。
  * 场景里先做画面上的演出，然后调用这里显示结局文字。
  */
+/** 结局演出里显示的图 */
+const ENDING_IMAGES: Record<number, string> = {
+  6: 'mafuyu_sit_back',
+  7: 'mafuyu_child_counting',
+};
+
 export function triggerEnding(scene: Phaser.Scene, id: number, lines?: string[]): void {
   const def = ENDINGS.find((e) => e.id === id)!;
   GameState.unlockEnding(id);
@@ -90,6 +96,7 @@ export function triggerEnding(scene: Phaser.Scene, id: number, lines?: string[])
     showStory(scene, {
       header,
       lines: lines ?? [def.summary],
+      image: ENDING_IMAGES[id],
       onDone: (s) => {
         GameState.replace(P.restartCycle(GameState.save));
         startAct(s, GameState.save.act);

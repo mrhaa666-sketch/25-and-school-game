@@ -5,6 +5,8 @@ import { getMaterial, hintLevel } from '../core/progress';
 import { tUi } from '../core/text';
 import { ExamUI } from '../systems/ExamUI';
 import { makeFigure, PALETTE } from '../systems/figures';
+import { PLAYER_HEIGHT } from '../systems/playerSprite';
+import { MAFUYU_STAND_REF, poseImage } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 import { actKey, startAct, triggerEnding } from './flow';
 import { RoomScene } from './RoomScene';
@@ -156,7 +158,8 @@ export class Act05Scene extends RoomScene {
   private async ending5(): Promise<void> {
     this.locked = true;
     this.menusOpen = false;
-    const self = makeFigure(this, this.pos.x, this.pos.y, { ...PALETTE.mafuyu, pose: 'sit' }).setDepth(101);
+    const self = this.add.container(this.pos.x, this.pos.y).setDepth(101);
+    self.add(poseImage(this, 'mafuyu_sit_back', PLAYER_HEIGHT, MAFUYU_STAND_REF) ?? makeFigure(this, 0, 0, { ...PALETTE.mafuyu, pose: 'sit' }));
     this.player.setVisible(false);
     await this.wait(1200);
     for (const p of Phaser.Utils.Array.Shuffle([...this.papers])) {

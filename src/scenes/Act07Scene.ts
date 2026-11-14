@@ -36,8 +36,7 @@ export class Act07Scene extends RoomScene {
     this.nextVoice = 0;
     this.allowRun = false;
     // 爬行姿势
-    this.player.removeAll(true);
-    this.player.add(makeFigure(this, 0, 0, { ...PALETTE.mafuyu, pose: 'crawl' }));
+    this.setPlayerPose('mafuyu_crawl', () => makeFigure(this, 0, 0, { ...PALETTE.mafuyu, pose: 'crawl' }));
     this.loadRoom('pipe');
     this.facing = 'right';
     this.makeDarkness();
@@ -86,6 +85,9 @@ export class Act07Scene extends RoomScene {
 
   protected onUpdate(_time: number, delta: number): void {
     this.darkness?.setPosition(this.player.x, this.player.y - 10);
+    // 爬行图朝右画的，往左爬时水平翻转
+    const body = this.player.list[0];
+    if (body instanceof Phaser.GameObjects.Image && (this.facing === 'left' || this.facing === 'right')) body.setFlipX(this.facing === 'left');
     const tile = this.playerTile();
 
     // 爬到一半，前方传来数数声（从下面那条岔路传来）

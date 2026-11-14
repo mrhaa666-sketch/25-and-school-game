@@ -5,6 +5,8 @@ import { hintLevel, hintRooms, MATERIALS, sanityTier } from '../core/progress';
 import { tHas, tLines, tStory, tUi } from '../core/text';
 import type { MaterialDef } from '../core/types';
 import { makeFigure, PALETTE } from '../systems/figures';
+import { MafuyuSprite, PLAYER_HEIGHT } from '../systems/playerSprite';
+import { MAFUYU_STAND_REF, poseImage } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 import { createCameraFx } from '../systems/VisualFilter';
 import { SCENE } from './flow';
@@ -50,9 +52,13 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   protected originY = 0;
   /** 演出中锁住移动 */
   protected locked = false;
+  /** 真冬的行走图（素材齐全时）。演出中换成其他姿势时设为 undefined */
+  protected mafuyu?: MafuyuSprite;
   /** 这一帧玩家是否在移动 */
   protected moving = false;
   protected allowRun = true;
+  /** 演出中被脚本带着走（播放走路动画） */
+  private autoWalking = false;
   protected stamina: number = MOVE.staminaMax;
   /** 是否允许打开手机 / 背包（QTE 等时候关掉） */
   protected menusOpen = true;
@@ -95,9 +101,16 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SHIFT') as Record<string, Phaser.Input.Keyboard.Key>;
     this.cameraFx = createCameraFx(this.cameras.main);
     this.roomLayer = this.add.container(0, 0);
-    this.player = makeFigure(this, 0, 0, { ...PALETTE.mafuyu }).setDepth(100);
-    const eye = this.add.triangle(0, 0, 0, 0, 8, 0, 4, 6, 0xffffff).setName('facing');
-    this.player.add(eye);
+    // 有素材就用真冬的行走图，没有就用色块 + 朝向小三角
+    if (MafuyuSprite.available(this)) {
+      this.mafuyu = new MafuyuSprite(this);
+      this.player = this.add.container(0, 0, [this.mafuyu.image]).setDepth(100);
+    } else {
+      this.mafuyu = undefined;
+      this.player = makeFigure(this, 0, 0, { ...PALETTE.mafuyu }).setDepth(100);
+      const eye = this.add.triangle(0, 0, 0, 0, 8, 0, 4, 6, 0xffffff).setName('facing');
+      this.player.add(eye);
+    }
     this.staminaBar = this.add.graphics().setDepth(500).setScrollFactor(0);
     this.cameras.main.setBackgroundColor('#000000');
   }
@@ -156,6 +169,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     if (Math.abs(x - this.pos.x) >= Math.abs(y - this.pos.y)) this.facing = x < this.pos.x ? 'left' : 'right';
     else this.facing = y < this.pos.y ? 'up' : 'down';
     const target = { x: this.pos.x, y: this.pos.y };
+    this.autoWalking = true;
     await this.tween({
       targets: target,
       x,
@@ -166,6 +180,17 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
         this.syncPlayer();
       },
     });
+    this.autoWalking = false;
+  }
+
+  /**
+   * 把玩家换成某个姿势的图（爬行、坐下……）。素材缺失时用 fallback 画的色块。
+   * 换了之后不再播放行走动画。
+   */
+  protected setPlayerPose(key: string, fallback: () => Phaser.GameObjects.GameObject): void {
+    this.player.removeAll(true);
+    this.mafuyu = undefined;
+    this.player.add(poseImage(this, key, PLAYER_HEIGHT, MAFUYU_STAND_REF) ?? fallback());
   }
 
   /** 调查后拿到材料的通用文字 */
@@ -560,6 +585,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
 
     this.stamina = Phaser.Math.Clamp(this.stamina + (running ? -MOVE.staminaDrain : MOVE.staminaRegen) * dt, 0, MOVE.staminaMax);
     this.drawStamina();
+    this.mafuyu?.update(this.facing, this.moving || this.autoWalking, delta);
     this.updateGhost(delta);
     this.onUpdate(time, delta);
   }
@@ -617,7 +643,10 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.ghostTimer -= delta;
     if (this.ghostTimer > 0) return;
     this.ghostTimer = sanityTier(GameState.save.sanity) === 4 ? 70 : 130;
-    const ghost = this.add.rectangle(this.player.x, this.player.y - 24, 24, 48, 0x5c4f7c, 0.35).setDepth(99);
+    const img = this.mafuyu?.image;
+    const ghost = img
+      ? this.add.image(this.player.x, this.player.y, img.texture.key).setOrigin(img.originX, img.originY).setScale(img.scaleX).setAlpha(0.35).setTint(0x8a7aa8).setDepth(99)
+      : this.add.rectangle(this.player.x, this.player.y - 24, 24, 48, 0x5c4f7c, 0.35).setDepth(99);
     this.tweens.add({ targets: ghost, alpha: 0, duration: 450, onComplete: () => ghost.destroy() });
   }
 }

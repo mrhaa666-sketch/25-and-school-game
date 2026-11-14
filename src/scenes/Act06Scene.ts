@@ -1,6 +1,8 @@
 import { SANITY, SANITY_COST } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { makeFigure, PALETTE } from '../systems/figures';
+import { PLAYER_HEIGHT } from '../systems/playerSprite';
+import { MAFUYU_STAND_REF, poseImage } from '../systems/sprites';
 import { actKey, startAct, triggerEnding } from './flow';
 import { drawMemberScene } from './memberScenes';
 import { RoomScene } from './RoomScene';
@@ -146,8 +148,8 @@ export class Act06Scene extends RoomScene {
   private async ending6(): Promise<void> {
     this.menusOpen = false;
     await this.wait(1800);
-    const back = makeFigure(this, this.pos.x, this.pos.y, { ...PALETTE.mafuyu, pose: 'sit' }).setDepth(101);
-    back.add(this.add.circle(0, -28, 10, PALETTE.mafuyu.hair)); // 背影
+    const back = this.add.container(this.pos.x, this.pos.y).setDepth(101);
+    back.add(poseImage(this, 'mafuyu_sit_back', PLAYER_HEIGHT, MAFUYU_STAND_REF) ?? makeFigure(this, 0, 0, { ...PALETTE.mafuyu, pose: 'sit' }));
     this.player.setVisible(false);
     await this.wait(1500);
     this.cameras.main.fadeOut(4000, 0, 0, 0);
