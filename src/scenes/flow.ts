@@ -173,8 +173,8 @@ export function playTransition(scene: Phaser.Scene, kind: TransitionKind): void 
     // 只有常规周目（二~四）和进入终周目时才会多一个乱码；补充周目之间不再增加
     const garbleGrew = s.cycleCount <= 4;
     if (garbleGrew) lines.push(...tLines('transition.phone', s.cycle));
-    lines.push(kind === 'final' ? '#sfx voice_last' : '#sfx voice_continue');
-    lines.push(`「${tRaw<string>(kind === 'final' ? 'voice.last' : 'voice.continue')}」`);
+    // 分不清是谁的声音：以「？？？」的台词出现
+    lines.push(`@${tRaw<string>('voice.speaker')} ${tRaw<string>(kind === 'final' ? 'voice.last' : 'voice.continue')}`);
   }
   const header = s.cycle === 'final' ? tUi('finalCycle') : cycleCountLabel(s.cycleCount);
   showStory(scene, { header, lines, onDone: (st) => startAct(st, 2) });

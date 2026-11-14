@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Audio, type SoundKey } from '../systems/audio';
+import type { SoundKey } from '../systems/audio';
 import { GAME_HEIGHT, GAME_WIDTH, MOVE, SANITY_COST } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { makeFigure, PALETTE } from '../systems/figures';
@@ -96,7 +96,11 @@ export class Act07Scene extends RoomScene {
     const tile = this.playerTile();
 
     // 爬到一半，前方传来数数声（从下面那条岔路传来）
-    if (!this.heard && tile.x >= 9) this.heard = true;
+    if (!this.heard && tile.x >= 9) {
+      this.heard = true;
+      // 第一次听到：前方的黑暗里，有人在数数
+      void this.cutscene(() => this.say(this.text('act07.counting_heard')));
+    }
     if (this.heard) {
       this.nextVoice -= delta;
       if (this.nextVoice <= 0) {
@@ -107,7 +111,6 @@ export class Act07Scene extends RoomScene {
         const ang = Phaser.Math.Angle.Between(this.pos.x, this.pos.y, src.x, src.y);
         const r = Math.min(d, 150);
         // 数数声：越靠近下面那条岔路越清楚
-        Audio.play('voice_counting', { volume: Phaser.Math.Clamp(1.1 - d / 800, 0.15, 1) });
         this.voiceText(this.pos.x + Math.cos(ang) * r, this.pos.y - 20 + Math.sin(ang) * r, Phaser.Math.Clamp(1.2 - d / 700, 0.3, 1));
       }
       // 停下来听超过 3 秒：-5（每次停下只扣一次）

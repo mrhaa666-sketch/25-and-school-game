@@ -42,7 +42,6 @@
 | `assets/audio/whisper.ogg` | owlishmedia | https://opengameart.org/content/creepy-incoherent-chanting | CC0 |
 
 以上音效由 `tools/audio/build_audio.py` 从原始素材剪辑、混合、调整音量后生成（原始素材不在仓库里，重新生成时需要先下载）。
-配音（`voice_counting` / `voice_continue` / `voice_last`）尚未录制。
 
 ## 美术
 

@@ -52,10 +52,6 @@ export const SOUNDS = {
   sanity_drop: { vol: 0.35 }, // 精神值下降时低沉的一下
   gate_open: { vol: 0.5 }, // 厚重的大门被推开
   ending_hit: { vol: 0.5 }, // 结局出现时低沉的一声
-  // ---- 配音（交接文档 8.4）
-  voice_counting: { vol: 0.6 }, // 真冬的声音：「……九十七、九十八、九十九。」
-  voice_continue: { vol: 0.6 }, // 分不清是谁的声音：「还没有结束。继续往前走。」
-  voice_last: { vol: 0.6 }, // 同一个声音：「最后一次了。」
 } satisfies Record<string, SoundDef>;
 
 export type SoundKey = keyof typeof SOUNDS;
