@@ -97,6 +97,12 @@ class GameStateImpl {
     return true;
   }
 
+  /** 真结局之后：删除存档（跨存档数据保留） */
+  clearSave(): void {
+    getStorage().remove(STORAGE_KEYS.save);
+    this.replace(P.createNewSave());
+  }
+
   persist(): void {
     const storage = getStorage();
     storage.write(STORAGE_KEYS.save, JSON.stringify(this._save));

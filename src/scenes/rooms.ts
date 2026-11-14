@@ -44,6 +44,8 @@ export interface RoomDef {
   /** 地板 / 墙面贴图（assets/tiles/ 下的文件名）。不写就按周目选 */
   floorTex?: string;
   wallTex?: string;
+  /** 终周目的变体房间：原本是哪个房间（材料位置、门的去向按原房间算） */
+  alias?: string;
   /** 所在楼层（补充周目第 3 次提示：走到材料所在楼层时停下来看一眼） */
   floor?: number;
   /**
@@ -437,4 +439,80 @@ export const ROOMS: Record<string, RoomDef> = {
     exits: {},
     spawn: { x: 8, y: 1 },
   },
+};
+
+// ---------------------------------------------------------------- 终周目（M5）
+// 同样的学校，但什么都没有发生：天花板上没有绳子、对面的门没有被撞开、桌上没有试卷、粉色的门不见了。
+
+const strip = (map: string[], from: RegExp, to = '.') => map.map((r) => r.replace(from, to));
+
+ROOMS.classroom4_final = {
+  ...ROOMS.classroom4,
+  id: 'classroom4_final',
+  alias: 'classroom4',
+  // 绳子没有了；左墙的门可以出去
+  map: strip(strip(ROOMS.classroom4.map, /r/g), /D/g, '1'),
+  objects: Object.fromEntries(Object.entries(ROOMS.classroom4.objects).filter(([k]) => k !== 'r' && k !== 'D')),
+  exits: { '1': { to: 'corridor4', arriveAt: '2' } },
+  doors: { '1': 'corridor4' },
+};
+
+ROOMS.classroom3_final = {
+  ...ROOMS.classroom3,
+  id: 'classroom3_final',
+  alias: 'classroom3',
+  map: strip(ROOMS.classroom3.map, /E/g),
+  objects: Object.fromEntries(Object.entries(ROOMS.classroom3.objects).filter(([k]) => k !== 'E')),
+  exits: { '1': { to: 'corridor3_final', arriveAt: '1' } },
+  doors: { '1': 'corridor3_final' },
+};
+
+ROOMS.exam_room_final = {
+  ...ROOMS.exam_room,
+  id: 'exam_room_final',
+  alias: 'exam_room',
+  // 桌上没有试卷
+  objects: {
+    ...ROOMS.exam_room.objects,
+    d: { ...ROOMS.exam_room.objects.d, tex: 'school_desk' },
+    X: { ...ROOMS.exam_room.objects.X, tex: 'school_desk' },
+  },
+  exits: { '1': { to: 'corridor3_final', arriveAt: '2' } },
+  doors: { '1': 'corridor3_final' },
+};
+
+ROOMS.corridor3_final = {
+  id: 'corridor3_final',
+  alias: 'corridor3_long',
+  floor: 3,
+  map: [
+    '#####1######2##########SS',
+    '#......................SS',
+    '#......................SS',
+    'U......................SS',
+    '###BB####################',
+  ],
+  objects: {
+    S: { id: 'stairs_final', color: 0x3a3a3a, tex: 'stairs' },
+    B: { id: 'quiet_door', color: 0x3a2a24, tex: 'class_door', wall: true },
+    U: { id: 'stairs_up', color: 0x2a2a2a, hidden: true },
+  },
+  exits: {
+    '1': { to: 'classroom3_final', arriveAt: '1' },
+    '2': { to: 'exam_room_final', arriveAt: '1' },
+  },
+  doors: { '1': 'classroom3', '2': 'exam_room' },
+  spawn: { x: 1, y: 2 },
+};
+
+ROOMS.lobby_final = {
+  ...ROOMS.lobby,
+  id: 'lobby_final',
+  alias: 'lobby',
+  map: ROOMS.lobby.map.map((r, y) => (y === 0 ? r.replace('1', 'm') : r)),
+  objects: {
+    ...ROOMS.lobby.objects,
+    m: { id: 'music_door', color: 0x2c2620, tex: 'class_door', wall: true },
+  },
+  spawn: { x: 8, y: 1 },
 };

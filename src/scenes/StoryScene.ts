@@ -28,6 +28,8 @@ export class StoryScene extends Phaser.Scene {
   private hint!: Phaser.GameObjects.Text;
   private speaker!: Phaser.GameObjects.Text;
   private ready = false;
+  private bgImage!: Phaser.GameObjects.Image;
+  private bgShade!: Phaser.GameObjects.Rectangle;
   private finished = false;
 
   constructor() {
@@ -43,11 +45,9 @@ export class StoryScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor('#000000');
-    if (this.data_.bg && this.textures.exists(this.data_.bg)) {
-      this.add.image(0, 0, this.data_.bg).setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setTint(0x8a8a8a);
-      // 文字区压暗，保证看得清
-      this.add.rectangle(0, GAME_HEIGHT / 2 - 90, GAME_WIDTH, 260, 0x000000, 0.45).setOrigin(0);
-    }
+    this.bgImage = this.add.image(0, 0, '__DEFAULT').setOrigin(0).setVisible(false);
+    this.bgShade = this.add.rectangle(0, GAME_HEIGHT / 2 - 90, GAME_WIDTH, 260, 0x000000, 0.45).setOrigin(0).setVisible(false);
+    if (this.data_.bg) this.setBg(this.data_.bg, false);
     if (this.data_.header) {
       this.add.text(GAME_WIDTH / 2, 120, this.data_.header, textStyle(20, COLORS.textDim)).setOrigin(0.5);
     }
@@ -90,9 +90,30 @@ export class StoryScene extends Phaser.Scene {
     this.next();
   }
 
+  /** 换背景（台词里写 "#bg 素材key" 就会切换；"#bg" 后面不写则变回黑屏） */
+  private setBg(key: string, fade = true): void {
+    const show = !!key && this.textures.exists(key);
+    const apply = () => {
+      if (show) this.bgImage.setTexture(key).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setTint(0x8a8a8a);
+      this.bgImage.setVisible(show);
+      this.bgShade.setVisible(show); // 文字区压暗，保证看得清
+    };
+    if (!fade) return apply();
+    this.tweens.add({ targets: this.bgImage, alpha: 0, duration: 700, onComplete: () => {
+      apply();
+      this.bgImage.setAlpha(0);
+      this.tweens.add({ targets: this.bgImage, alpha: 1, duration: 1400 });
+    } });
+  }
+
   private next(): void {
     if (!this.ready || this.finished) return;
     this.index++;
+    // 指令行：切换背景，然后直接显示下一句
+    while (this.index < this.data_.lines.length && this.data_.lines[this.index].startsWith('#bg')) {
+      this.setBg(this.data_.lines[this.index].slice(3).trim());
+      this.index++;
+    }
     if (this.index >= this.data_.lines.length) {
       this.finished = true;
       this.cameras.main.fadeOut(700, 0, 0, 0);

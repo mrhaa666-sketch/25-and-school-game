@@ -451,6 +451,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private addDoorLights(): void {
     this.lightTimers.forEach((t) => t.remove());
     this.lightTimers = [];
+    if (GameState.isFinal) return; // 终周目：灯是关着的
     const doors = this.room.doors ?? {};
     const hinted = hintRooms(GameState.save);
     const flick = (light: Phaser.GameObjects.Rectangle) => {

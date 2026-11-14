@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { EV, GameState } from '../core/GameState';
 import { GAME_WIDTH } from '../core/constants';
+import { getMaterial } from '../core/progress';
 import { cycleCountLabel, tUi } from '../core/text';
+import { tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 import { DialogueBox } from '../systems/DialogueBox';
 import { InventoryUI } from '../systems/InventoryUI';
@@ -54,6 +56,7 @@ export class UIScene extends Phaser.Scene {
   private pause!: ListMenu;
   private debug?: ListMenu;
   private cycleLabel!: Phaser.GameObjects.Text;
+  private flashSlot = 0;
   private activeModal: Modal | null = null;
   private target: PlayTarget | null = null;
 
@@ -123,6 +126,54 @@ export class UIScene extends Phaser.Scene {
 
   get phoneUI(): PhoneUI {
     return this.phone;
+  }
+
+  /**
+   * 终周目：经过材料所在的地方时，背包里的材料亮一下。
+   * 在画面右上角浮现材料的小图和名字，再淡出。
+   */
+  flashMaterials(ids: string[]): void {
+    ids.forEach((id, i) => {
+      const m = getMaterial(id);
+      if (!m) return;
+      const y = 70 + this.flashSlot * 64;
+      this.flashSlot = (this.flashSlot + 1) % 4;
+      const x = GAME_WIDTH - 40;
+      const parts: Phaser.GameObjects.GameObject[] = [];
+      const glow = this.add.circle(x - 34, y + 22, 30, 0xd8e4ff, 0.18).setBlendMode(Phaser.BlendModes.ADD);
+      parts.push(glow);
+      if (this.textures.exists(tex('mat', id))) parts.push(this.add.image(x - 34, y + 22, tex('mat', id)).setDisplaySize(60, 44));
+      parts.push(this.add.text(x - 74, y + 22, m.name, textStyle(14, '#c8d0e0')).setOrigin(1, 0.5));
+      const c = this.add.container(0, 0, parts).setDepth(820).setAlpha(0);
+      this.tweens.chain({
+        targets: c,
+        tweens: [
+          { alpha: 1, duration: 700, delay: i * 500 },
+          { alpha: 1, duration: 1600 },
+          { alpha: 0, duration: 1200 },
+        ],
+        onComplete: () => c.destroy(),
+      });
+      this.tweens.add({ targets: glow, scale: 1.4, alpha: 0.05, duration: 900, yoyo: true, repeat: 1, delay: i * 500 });
+    });
+  }
+
+  /** 终周目结尾：打开手机，通讯录里的名字一个一个变回来 */
+  restoreContacts(): Promise<void> {
+    return new Promise((resolve) => {
+      this.openModal(this.phone);
+      const order = ['kanade', 'mizuki', 'ena']; // 和变成乱码的顺序相反
+      order.forEach((id, i) =>
+        this.time.delayedCall(1300 + i * 1300, () => {
+          this.phone.restored.add(id);
+          this.phone.refresh();
+        }),
+      );
+      this.time.delayedCall(1300 + order.length * 1300 + 1200, () => {
+        this.closeModal();
+        resolve();
+      });
+    });
   }
 
   setScreenTextEnabled(on: boolean): void {

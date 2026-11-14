@@ -11,6 +11,7 @@ import { Act08Scene } from './scenes/Act08Scene';
 import { Act09Scene } from './scenes/Act09Scene';
 import { Act10Scene } from './scenes/Act10Scene';
 import { BootScene } from './scenes/BootScene';
+import { FinalRunScene } from './scenes/FinalRunScene';
 import { StoryScene } from './scenes/StoryScene';
 import { TitleScene } from './scenes/TitleScene';
 import { UIScene } from './scenes/UIScene';
@@ -36,6 +37,7 @@ const game = new Phaser.Game({
     Act08Scene,
     Act09Scene,
     Act10Scene,
+    FinalRunScene,
     UIScene,
   ],
 });

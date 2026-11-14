@@ -13,12 +13,13 @@ export const SCENE = {
   title: 'Title',
   ui: 'UI',
   story: 'Story',
+  finalRun: 'FinalRun',
 } as const;
 
 /** 第 n 幕对应的场景 key */
 export const actKey = (n: number) => `Act${String(n).padStart(2, '0')}`;
 
-const GAMEPLAY_SCENES = Array.from({ length: 10 }, (_, i) => actKey(i + 1));
+const GAMEPLAY_SCENES = [...Array.from({ length: 10 }, (_, i) => actKey(i + 1)), 'FinalRun'];
 
 function stopGameplay(scene: Phaser.Scene): void {
   for (const key of GAMEPLAY_SCENES) {
@@ -39,7 +40,8 @@ export function startAct(scene: Phaser.Scene, act: number, deduct = true): void 
   if (scene.scene.isActive(SCENE.story)) scene.scene.stop(SCENE.story);
   if (!scene.scene.isActive(SCENE.ui)) scene.scene.launch(SCENE.ui);
 
-  const key = actKey(act);
+  // 终周目：不分幕，一个场景从医务室走到大门
+  const key = GameState.save.cycle === 'final' ? SCENE.finalRun : actKey(act);
   scene.scene.launch(key, { act });
   scene.scene.bringToTop(SCENE.ui);
   if (scene.scene.key !== SCENE.ui && scene.scene.key !== key) scene.scene.stop();
@@ -118,8 +120,16 @@ export function triggerEnding(scene: Phaser.Scene, id: number, lines?: string[])
     });
     return;
   }
-  // 10 由终周目（M5）处理
-  showStory(scene, { header, lines: lines ?? [def.summary], onDone: (s) => goToTitle(s) });
+  // 10：真结局。尾声之后游戏结束：删除存档（结局图鉴保留），回到标题
+  showStory(scene, {
+    header,
+    lines: lines ?? tLines('finalrun.epilogue', 'final'),
+    bg: 'bg:final_gate',
+    onDone: (s) => {
+      GameState.clearSave();
+      goToTitle(s);
+    },
+  });
 }
 
 // ---------------------------------------------------------------- 第十幕 · 大门

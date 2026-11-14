@@ -97,6 +97,11 @@ export class PhoneUI implements Modal {
     this.render();
   }
 
+  /** 外部改了状态（名字恢复）后重画 */
+  refresh(): void {
+    if (this.isOpen) this.render();
+  }
+
   private sendMessage(): void {
     this.mode = 'busy';
     this.renderBusy('……');
