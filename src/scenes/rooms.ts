@@ -872,6 +872,7 @@ function enaCorridor2(def: RoomDef): RoomDef {
       C: { id: 'ena_canvas_pile', color: 0x4a4038, tex: 'ena_canvas_pile' },
       d: DESK,
     },
+    examine: [...(def.examine ?? []), { ch: 'C', key: 'examine.corridor2.canvas_pile' }],
   };
 }
 
@@ -888,5 +889,6 @@ function mizukiCorridor4(def: RoomDef): RoomDef {
       { tex: 'mizuki_ribbon_01', x: 16.2, y: 3.6, scale: 0.6, angle: 30, cycle: [3] },
       { tex: 'mizuki_ribbon_03', x: 19.8, y: 3.7, scale: 0.6, angle: -20, cycle: [3] },
     ],
+    examine: [...(def.examine ?? []), { ch: 'Q', key: 'examine.corridor4.mannequin' }],
   };
 }
