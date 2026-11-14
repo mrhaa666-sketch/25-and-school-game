@@ -220,6 +220,10 @@ export class Act04Scene extends RoomScene {
 
   // ------------------------------------------------------------ 停留扣除 / 追逐
 
+  protected isChasing(): boolean {
+    return this.chase === 'running' || this.chase === 'intro';
+  }
+
   protected onUpdate(_time: number, delta: number): void {
     if (this.room.id === 'classroom3' && this.descentTween && !this.ropeCut && GameState.cycleDef.monsterA.ai === 'statue') {
       // 石膏像：真冬看着窗口（面朝左）时停住，移开视线才继续往下爬

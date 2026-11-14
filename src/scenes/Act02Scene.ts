@@ -168,6 +168,10 @@ export class Act02Scene extends RoomScene {
 
   // ------------------------------------------------------------ 追逐战 1
 
+  protected isChasing(): boolean {
+    return this.chase === 'running';
+  }
+
   protected onUpdate(_time: number, delta: number): void {
     if (this.room?.id !== 'corridor4' || GameState.isFinal) return;
     if (this.chase === 'before' && this.playerTile().x >= 25) this.startChase();

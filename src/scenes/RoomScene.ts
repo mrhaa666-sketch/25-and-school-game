@@ -12,7 +12,7 @@ import { textStyle } from '../systems/style';
 import { createCameraFx } from '../systems/VisualFilter';
 import { Darkness, type LightSource } from '../systems/Darkness';
 import { SCENE } from './flow';
-import { ROOMS, type RoomDecor, type RoomDef, type RoomObject } from './rooms';
+import { cycleLayout, ROOMS, type RoomDecor, type RoomDef, type RoomObject } from './rooms';
 import type { PlayTarget, UIScene } from './UIScene';
 
 export type Dir = 'up' | 'down' | 'left' | 'right';
@@ -944,6 +944,9 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.updateDust(this.game.loop.delta);
     if (!this.darkness) return;
     this.darkness.beat = this.beatShade ? this.beatShade.alpha / 0.22 : 0;
+    // L4：奏周目的走廊，灯只在拍子上亮（追逐中不这样，免得追逐变难）
+    const beatLamps = GameState.save.cycle === 4 && this.room.id.includes('corridor') && !this.isChasing();
+    this.darkness.beatMode = beatLamps ? 'lamps' : 'dim';
     const t = this.time.now;
     const lights: LightSource[] = [];
     this.chaseLampsOut();
@@ -951,7 +954,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       // 闪烁的灯：偶尔暗一下，各盏灯错开
       const ph = l.phase ?? 0;
       const k = l.flicker && Math.sin(t * 0.013 + ph) + Math.sin(t * 0.0071 + ph * 2.3) > 1.55 ? 0.15 : 1;
-      const lit = l.intensity * k;
+      const lit = l.intensity * k * (beatLamps && l.lamp ? Math.max(0.03, this.darkness.beat) : 1);
       if (l.fixture) {
         const fg = this.foreground.find((f) => f.obj === l.fixture);
         const glow = l.broken ? 0.5 : 0.3 + 0.4 * (lit / 0.7) * (1 - this.darkness.beat * 0.6);
@@ -1095,6 +1098,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     let def = typeof roomOrId === 'string' ? ROOMS[roomOrId] : roomOrId;
     if (!def) throw new Error(`没有这个房间：${String(roomOrId)}`);
     if (GameState.isFinal) def = tidyForFinal(def);
+    def = cycleLayout(def, GameState.save.cycle);
     this.room = def;
     this.roomLayer.removeAll(true);
 
@@ -1591,7 +1595,12 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
    * 子类有追逐 / 限时的话覆盖它。
    */
   protected allowStairwell(): boolean {
-    return true;
+    return !this.isChasing();
+  }
+
+  /** 正在追逐（子类有追逐的覆盖它） */
+  protected isChasing(): boolean {
+    return false;
   }
 
   /** 补充周目的提示：没拿到的材料附近有微弱光点 */

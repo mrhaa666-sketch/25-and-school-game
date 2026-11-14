@@ -833,3 +833,60 @@ ROOMS.lobby_final = {
   },
   spawn: { x: 8, y: 1 },
 };
+
+// ---------------------------------------------------------------- 周目之间的布局差异（L4）
+
+/**
+ * 某些周目里房间的布局不一样。进房间时套用（不改原来的房间定义，出口和门的位置不变）。
+ * - 绘名周目：二楼走廊被一堆画布整个堵住，从下面的一间教室绕过去
+ * - 瑞希周目：四楼走廊下半边摆着人台，只能走上面那条路
+ */
+export function cycleLayout(def: RoomDef, cycle: 1 | 2 | 3 | 4 | 'final'): RoomDef {
+  if (def.id === 'corridor2' && cycle === 2) return enaCorridor2(def);
+  if (def.id === 'corridor4' && cycle === 3) return mizukiCorridor4(def);
+  return def;
+}
+
+function enaCorridor2(def: RoomDef): RoomDef {
+  const W = def.map[0].length;
+  const g = def.map.map((r) => [...r]);
+  // 画布堆：x 14~15，走廊 1~5 行整个堵死
+  for (let y = 1; y <= 5; y++) for (const x of [14, 15]) g[y][x] = 'C';
+  // 下面的教室：x 8~21，第 7~10 行；底墙第 6 行开两个门洞
+  const x0 = 8;
+  const x1 = 21;
+  for (let y = 7; y <= 11; y++) g.push(Array(W).fill(' '));
+  for (let x = x0; x <= x1; x++) {
+    for (let y = 7; y <= 10; y++) g[y][x] = x === x0 || x === x1 ? '#' : '.';
+    g[11][x] = '#';
+  }
+  for (let x = x0 + 2; x <= x1 - 2; x += 3) g[9][x] = 'd';
+  for (const x of [10, 11, 18, 19]) g[6][x] = '.';
+  // 门洞上不能有东西挡着
+  for (const x of [10, 11, 18, 19]) if (g[5][x] !== '.') g[5][x] = '.';
+  return {
+    ...def,
+    map: g.map((r) => r.join('')),
+    objects: {
+      ...def.objects,
+      C: { id: 'ena_canvas_pile', color: 0x4a4038, tex: 'ena_canvas_pile' },
+      d: DESK,
+    },
+  };
+}
+
+function mizukiCorridor4(def: RoomDef): RoomDef {
+  const g = def.map.map((r) => [...r]);
+  // 下半边（第 4、5 行）x 15~22 摆满人台
+  for (let x = 15; x <= 22; x++) for (const y of [4, 5]) if (g[y][x] === '.') g[y][x] = 'Q';
+  return {
+    ...def,
+    map: g.map((r) => r.join('')),
+    objects: { ...def.objects, Q: { id: 'mizuki_mannequin', color: 0x8a6a7a, tex: 'mizuki_mannequin' } },
+    decor: [
+      ...(def.decor ?? []),
+      { tex: 'mizuki_ribbon_01', x: 16.2, y: 3.6, scale: 0.6, angle: 30, cycle: [3] },
+      { tex: 'mizuki_ribbon_03', x: 19.8, y: 3.7, scale: 0.6, angle: -20, cycle: [3] },
+    ],
+  };
+}

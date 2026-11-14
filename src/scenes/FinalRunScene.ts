@@ -22,7 +22,7 @@ const ENTER_TEXT: Record<string, string> = {
 /**
  * 终周目（交接文档第 5 节）。
  * 全程没有追逐、精神值和屏幕文字。灯是关着的，只有月光。
- * 从四楼医务室一层一层往下走到大门；经过材料所在的地方时，背包里的材料亮一下。
+ * 从四楼医务室出来，走楼梯直接下到一楼，穿过大厅从大门离开；经过材料所在的地方时，背包里的材料亮一下。
  * 推开大门：三个人在校门口等她 → 通讯录的名字一个一个变回来 →「……嗯。」→ 结局 10。
  */
 export class FinalRunScene extends RoomScene {
@@ -118,8 +118,8 @@ export class FinalRunScene extends RoomScene {
 
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
-      case 'stairs': // 四楼 → 三楼
-        return this.downstairs('corridor3_final');
+      case 'stairs': // 四楼 → 直接下到一楼，穿过大厅从大门离开
+        return this.downstairs('lobby_final');
       case 'stairs_final': // 三楼 → 二楼
         return this.downstairs('stairs2');
       case 'stairs_down': // 二楼 → 一楼
