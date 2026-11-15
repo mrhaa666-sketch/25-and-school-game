@@ -34,6 +34,7 @@ export const EV = {
   material: 'material-added',
   state: 'state-replaced',
   ending: 'ending-unlocked',
+  checkpoint: 'checkpoint-saved',
 } as const;
 
 function defaultMeta(): MetaData {
@@ -101,6 +102,35 @@ class GameStateImpl {
   clearSave(): void {
     getStorage().remove(STORAGE_KEYS.save);
     this.replace(P.createNewSave());
+  }
+
+  /**
+   * 存档点：每一幕开始时记下当时的存档。死亡结局之后从这里重新开始，
+   * 拿到的材料不会丢（材料跨死亡保留）。
+   */
+  /** 最近一次存档的时间（界面据此显示「已存档」） */
+  lastCheckpointAt = 0;
+
+  checkpoint(): void {
+    getStorage().write(STORAGE_KEYS.checkpoint, JSON.stringify(this._save));
+    this.lastCheckpointAt = Date.now();
+    this.events.emit(EV.checkpoint);
+  }
+
+  /** 回到最近的存档点（同一个周目里）。没有可用的存档点返回 false */
+  restoreCheckpoint(): boolean {
+    const raw = getStorage().read(STORAGE_KEYS.checkpoint);
+    if (!raw) return false;
+    try {
+      const cp = JSON.parse(raw) as SaveData;
+      if (cp.cycle !== this._save.cycle || cp.cycleCount !== this._save.cycleCount) return false;
+      const materials = [...new Set([...cp.materials, ...this._save.materials])];
+      this.replace({ ...cp, materials });
+      this.persist();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   persist(): void {

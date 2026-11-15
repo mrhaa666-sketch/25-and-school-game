@@ -80,4 +80,5 @@ export const CONTACT_GARBLE_ORDER = ['ena', 'mizuki', 'kanade'] as const;
 export const STORAGE_KEYS = {
   save: '25-and-school/save',
   meta: '25-and-school/meta',
+  checkpoint: '25-and-school/checkpoint',
 } as const;

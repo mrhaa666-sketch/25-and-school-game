@@ -29,6 +29,11 @@ export class ListMenu implements Modal {
     this.root = scene.add.container(0, 0, [bg, t]).setDepth(980).setVisible(false);
     items.forEach((_, i) => {
       const row = scene.add.text(x + 40, y + 80 + i * 46, '', textStyle(22));
+      // 鼠标指到哪一项就选中哪一项，点一下（等于空格）确认
+      row.setInteractive({ useHandCursor: true }).on('pointerover', () => {
+        this.cursor = i;
+        this.render();
+      });
       this.rows.push(row);
       this.root.add(row);
     });

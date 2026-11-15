@@ -4,9 +4,14 @@ import { MATERIALS } from '../core/progress';
 import { ListMenu } from '../systems/ListMenu';
 import { startAct } from './flow';
 
-/** 开发模式（npm run dev）或网址带 ?debug 时启用，F2 打开 */
+/** 开发者模式：所有版本都能用，游戏里按 F2 打开 */
 export function debugEnabled(): boolean {
-  return import.meta.env.DEV || (typeof location !== 'undefined' && location.search.includes('debug'));
+  return true;
+}
+
+/** 无敌：追逐中被追上也不算（只用于测试） */
+export function godMode(): boolean {
+  return (globalThis as { __god?: boolean }).__god === true;
 }
 
 export function buildDebugMenu(scene: Phaser.Scene, close: () => void): ListMenu {
@@ -18,7 +23,7 @@ export function buildDebugMenu(scene: Phaser.Scene, close: () => void): ListMenu
   };
   return new ListMenu(
     scene,
-    '调试（F2）',
+    '开发者模式（F2）',
     [
       { label: '精神值 -10', action: () => GameState.deductSanity(10, 'debug') },
       { label: '精神值设为 100', action: () => GameState.debugSetSanity(100) },
@@ -31,6 +36,18 @@ export function buildDebugMenu(scene: Phaser.Scene, close: () => void): ListMenu
         },
       },
       { label: '获得全部 12 份材料', action: () => MATERIALS.forEach((m) => GameState.addMaterial(m.id)) },
+      {
+        label: () => `周目：${GameState.save.cycle === 'final' ? '终周目' : GameState.save.cycle}（确认切换）`,
+        action: () => {
+          const order = [1, 2, 3, 4, 'final'] as const;
+          const i = order.indexOf(GameState.save.cycle as (typeof order)[number]);
+          GameState.patch({ cycle: order[(i + 1) % order.length] });
+        },
+      },
+      {
+        label: () => `无敌（追逐不会被抓）：${godMode() ? '开' : '关'}`,
+        action: () => ((globalThis as { __god?: boolean }).__god = !godMode()),
+      },
       { label: () => `目标：第 ${target} 幕（确认切换）`, action: () => (target = (target % 10) + 1) },
       { label: () => `跳到第 ${target} 幕`, action: () => jump(target) },
       { label: '关闭', action: close },

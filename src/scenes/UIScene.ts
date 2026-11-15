@@ -37,6 +37,7 @@ const KEY_ACTIONS: Record<string, UiAction> = {
   ArrowRight: 'right',
   KeyD: 'right',
   Space: 'confirm',
+  KeyF: 'confirm',
   Enter: 'confirm',
   NumpadEnter: 'confirm',
   Escape: 'back',
@@ -98,6 +99,17 @@ export class UIScene extends Phaser.Scene {
     const kb = this.input.keyboard!;
     kb.addCapture('TAB,SPACE,UP,DOWN,LEFT,RIGHT,F2');
     kb.on('keydown', (e: KeyboardEvent) => this.onKey(e));
+    // 鼠标点击怎么处理（见 main.ts）：在房间里自由走动时交给房间，其余等于按空格
+    (window as unknown as { __clickMode?: () => string }).__clickMode = () => {
+      if (!this.sys.isActive()) return 'space';
+      if (this.activeModal || this.dialogueBox.isOpen) return 'space';
+      const t = this.target as (PlayTarget & { clickMode?: () => string }) | null;
+      if (t && t.sys.isActive() && t.clickMode) return t.clickMode();
+      return 'space';
+    };
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      (window as unknown as { __clickMode?: () => string }).__clickMode = undefined;
+    });
   }
 
   update(time: number, delta: number): void {
@@ -107,8 +119,13 @@ export class UIScene extends Phaser.Scene {
     Audio.loop('heart', tier4 ? 'heartbeat' : null, 1500);
     Audio.setDistorted(tier4);
     const s = GameState.save;
-    this.cycleLabel.setVisible(s.cycle !== 'final').setText(cycleCountLabel(s.cycleCount));
+    // 不显示第几周目
+    this.cycleLabel.setVisible(false).setText(cycleCountLabel(s.cycleCount));
     this.filter.update(time, this.registry.get('roomLit') === true);
+    if (GameState.lastCheckpointAt > this.savedShownAt) {
+      this.savedShownAt = GameState.lastCheckpointAt;
+      this.time.delayedCall(800, () => this.showSaved());
+    }
     this.screenText.update(time);
   }
 
@@ -117,6 +134,32 @@ export class UIScene extends Phaser.Scene {
   setTarget(target: PlayTarget | null): void {
     this.target = target;
     this.closeModal();
+  }
+
+  private objectiveText?: Phaser.GameObjects.Text;
+  private savedShownAt = 0;
+
+  /** 右上角短暂显示「已存档」 */
+  private showSaved(): void {
+    const t = this.add.text(GAME_WIDTH - 28, 22, '已存档', textStyle(16, '#a8a090')).setOrigin(1, 0).setDepth(800).setAlpha(0);
+    this.tweens.chain({ targets: t, tweens: [{ alpha: 1, duration: 400 }, { alpha: 1, duration: 1600 }, { alpha: 0, duration: 600 }], onComplete: () => t.destroy() });
+  }
+
+  /** 左上角「现在要做的事」。null 隐藏 */
+  setObjective(text: string | null): void {
+    if (!this.objectiveText) {
+      this.objectiveText = this.add.text(28, 58, '', textStyle(16, '#b8b0a0')).setDepth(800).setAlpha(0);
+    }
+    const t = this.objectiveText;
+    if (!text) {
+      if (t.alpha > 0) this.tweens.add({ targets: t, alpha: 0, duration: 300 });
+      t.setData('v', null);
+      return;
+    }
+    if (t.getData('v') === text) return;
+    t.setData('v', text);
+    t.setText(`▸ ${text}`).setAlpha(0);
+    this.tweens.add({ targets: t, alpha: 1, duration: 500 });
   }
 
   /** 是否有界面挡住玩家操作 */
@@ -279,7 +322,7 @@ export class UIScene extends Phaser.Scene {
       // 同一个快捷键可以再关掉对应界面
       if (
         (e.code === 'Tab' && this.activeModal === this.phone) ||
-        (e.code === 'KeyI' && this.activeModal === this.bag) ||
+        ((e.code === 'KeyE' || e.code === 'KeyI') && this.activeModal === this.bag) ||
         (e.code === 'F2' && this.activeModal === this.debug)
       ) {
         return this.closeModal();
@@ -303,6 +346,7 @@ export class UIScene extends Phaser.Scene {
       case 'Tab':
         if (menusAllowed) this.openModal(this.phone);
         return;
+      case 'KeyE':
       case 'KeyI':
         if (menusAllowed) this.openModal(this.bag);
         return;

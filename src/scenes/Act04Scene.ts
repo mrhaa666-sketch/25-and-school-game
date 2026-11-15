@@ -5,6 +5,7 @@ import { GameState } from '../core/GameState';
 import { hintLevel } from '../core/progress';
 import { ashBurst, makeFigure, makeMonsterById, PALETTE, ROPE_VARIANT } from '../systems/figures';
 import { fitImage, poseImage, tex } from '../systems/sprites';
+import { godMode } from './debug';
 import { actKey, startAct, triggerEnding } from './flow';
 import { drawMemberScene, hasMemberOverlay, showMemberOverlay } from './memberScenes';
 import { type Actor, RoomScene } from './RoomScene';
@@ -454,6 +455,7 @@ export class Act04Scene extends RoomScene {
   }
 
   private caught(): void {
+    if (godMode()) return; // 开发者模式：无敌
     if (this.chase !== 'running') return;
     this.chase = 'done';
     this.locked = true;

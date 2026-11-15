@@ -97,8 +97,20 @@ export class Act09Scene extends RoomScene {
       this.add.text(GAME_WIDTH / 2 + 120, y, refuse, textStyle(30)).setOrigin(0.5).setScrollFactor(0).setDepth(901),
     ];
     this.cursor = 0; // 默认停在「同意」上
+    this.hoverButtons();
     this.choosing = true;
     this.renderButtons();
+  }
+
+  /** 鼠标指到哪个按钮就选中哪个，点一下（等于空格）确认 */
+  private hoverButtons(): void {
+    this.buttons.forEach((b, i) =>
+      b.setInteractive({ useHandCursor: true }).on('pointerover', () => {
+        if (!this.choosing || (this.eaten && i === 1)) return;
+        this.cursor = i;
+        this.renderButtons();
+      }),
+    );
   }
 
   private renderButtons(): void {

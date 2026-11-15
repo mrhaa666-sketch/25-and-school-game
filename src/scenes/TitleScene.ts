@@ -112,7 +112,15 @@ export class TitleScene extends Phaser.Scene {
     this.mainItems().forEach((item, i) => {
       const sel = i === this.cursor;
       const color = !item.enabled ? '#3a3834' : sel ? COLORS.highlight : COLORS.textDim;
-      this.layer.add(this.add.text(GAME_WIDTH / 2, 330 + i * 56, `${sel ? '›  ' : '   '}${item.label}`, textStyle(26, color)).setOrigin(0.5));
+      const row = this.add.text(GAME_WIDTH / 2, 330 + i * 56, `${sel ? '›  ' : '   '}${item.label}`, textStyle(26, color)).setOrigin(0.5);
+      // 鼠标指到哪一项就选中哪一项，点一下（等于空格）确认
+      if (item.enabled) row.setInteractive({ useHandCursor: true }).on('pointerover', () => {
+        if (this.cursor !== i) {
+          this.cursor = i;
+          this.render();
+        }
+      });
+      this.layer.add(row);
     });
     // 选中「继续游戏」时显示存档栏：四个周目的 ⭐/？ 进度
     if (this.cursor === 1) this.renderSaveSlot();
@@ -142,7 +150,14 @@ export class TitleScene extends Phaser.Scene {
     this.layer.add(this.add.text(GAME_WIDTH / 2, 330, tUi('overwriteConfirm'), textStyle(20, COLORS.text)).setOrigin(0.5));
     [tUi('confirm'), tUi('cancel')].forEach((label, i) => {
       const sel = i === this.cursor;
-      this.layer.add(this.add.text(GAME_WIDTH / 2, 400 + i * 50, `${sel ? '›  ' : '   '}${label}`, textStyle(24, sel ? COLORS.highlight : COLORS.textDim)).setOrigin(0.5));
+      const row = this.add.text(GAME_WIDTH / 2, 400 + i * 50, `${sel ? '›  ' : '   '}${label}`, textStyle(24, sel ? COLORS.highlight : COLORS.textDim)).setOrigin(0.5);
+      row.setInteractive({ useHandCursor: true }).on('pointerover', () => {
+        if (this.cursor !== i) {
+          this.cursor = i;
+          this.render();
+        }
+      });
+      this.layer.add(row);
     });
   }
 

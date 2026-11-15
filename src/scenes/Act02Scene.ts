@@ -3,6 +3,7 @@ import { Audio } from '../systems/audio';
 import { CHASE, SANITY_COST } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { makeMonsterById } from '../systems/figures';
+import { godMode } from './debug';
 import { actKey, startAct, triggerEnding } from './flow';
 import { hintLevel } from '../core/progress';
 import { tex } from '../systems/sprites';
@@ -275,6 +276,7 @@ export class Act02Scene extends RoomScene {
   }
 
   private caught(): void {
+    if (godMode()) return; // 开发者模式：无敌
     if (this.chase !== 'running') return;
     this.chase = 'done';
     this.locked = true;

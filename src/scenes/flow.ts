@@ -36,6 +36,8 @@ function stopGameplay(scene: Phaser.Scene): void {
 export function startAct(scene: Phaser.Scene, act: number, deduct = true): void {
   if (deduct) GameState.enterAct(act);
   else GameState.persist();
+  // 每一幕开始都是一个存档点（第一幕是开场演出，不算）
+  if (act >= 2) GameState.checkpoint();
 
 
   stopGameplay(scene);
@@ -110,6 +112,8 @@ export function triggerEnding(scene: Phaser.Scene, id: number, lines?: string[])
       image: hasCG ? undefined : ENDING_IMAGES[id],
       bg: hasCG ? cg : undefined,
       onDone: (s) => {
+        // 从最近的存档点重新开始；没有存档点时回到这个周目的开头
+        if (GameState.restoreCheckpoint()) return startAct(s, GameState.save.act, false);
         GameState.replace(P.restartCycle(GameState.save));
         startAct(s, GameState.save.act);
       },

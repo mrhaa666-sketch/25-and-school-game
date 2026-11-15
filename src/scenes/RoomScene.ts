@@ -106,6 +106,13 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   protected allowRun = true;
   /** 演出中被脚本带着走（播放走路动画） */
   private autoWalking = false;
+  /** 鼠标点击后自动走的路线（世界坐标），走完后调查 interactAt 那一格 */
+  private clickPath: { x: number; y: number }[] = [];
+  private clickInteract?: { x: number; y: number };
+  private clickStuckMs = 0;
+  /** 面前可以调查时头顶的「F」提示 */
+  private interactHint?: Phaser.GameObjects.Container;
+  private objectiveAcc = 0;
   protected stamina: number = MOVE.staminaMax;
   /** 是否允许打开手机 / 背包（QTE 等时候关掉） */
   protected menusOpen = true;
@@ -203,6 +210,14 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.beatShade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1).setOrigin(0).setScrollFactor(0).setDepth(450).setAlpha(0);
     this.cameras.main.setBackgroundColor('#000000');
     this.setupHudCamera();
+    this.clickPath = [];
+    this.clickInteract = undefined;
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onPointer(p));
+    this.interactHint = this.add.container(0, 0).setDepth(130).setVisible(false);
+    this.interactHint.add([
+      this.add.rectangle(0, 0, 18, 18, 0x000000, 0.6).setStrokeStyle(1, 0xc8c0b0, 0.8),
+      this.add.text(0, 0, 'F', textStyle(13, '#e8e0d0')).setOrigin(0.5),
+    ]);
     // 黑暗层画在角色和物件上面（100~101），演出特效（110 以上）下面
     this.darkness = new Darkness(this, 105);
     this.roomLights = [];
@@ -802,6 +817,11 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const off = state === 'broken' || GameState.isFinal;
     // 灯管挂在头顶：画在光斑上方，盖在角色上面（N4 的前景层会接管它）
     const fy = y - TILE * 1.7;
+    // 走廊里不画灯管，只有地上的灯光
+    const noTube = this.room.id.includes('corridor');
+    if (noTube) {
+      return { tex: 'light_lamp', x, y, radius: TILE * 2.3, intensity: off ? 0 : 0.7, squash: 0.65, flicker: state === 'flicker', phase: tx * 1.7 + ty, lamp: true, broken: off };
+    }
     const key = tex('obj', 'lamp_tube');
     let fixture: Phaser.GameObjects.Graphics | Phaser.GameObjects.Image;
     if (this.textures.exists(key)) {
@@ -1748,6 +1768,31 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       if (k.RIGHT.isDown || k.D.isDown) dx += 1;
       if (k.UP.isDown || k.W.isDown) dy -= 1;
       if (k.DOWN.isDown || k.S.isDown) dy += 1;
+      if (dx || dy) this.clickPath = []; // 按了方向键：取消鼠标的路线
+      else if (this.clickPath.length) {
+        const wp = this.clickPath[0];
+        const ddx = wp.x - this.pos.x;
+        const ddy = wp.y - this.pos.y;
+        if (Math.hypot(ddx, ddy) < 4) {
+          this.clickPath.shift();
+          if (!this.clickPath.length && this.clickInteract) {
+            const t = this.clickInteract;
+            this.clickInteract = undefined;
+            const me = this.playerTile();
+            this.facing = Math.abs(t.x - me.x) >= Math.abs(t.y - me.y) ? (t.x < me.x ? 'left' : 'right') : t.y < me.y ? 'up' : 'down';
+            this.syncPlayer();
+            this.onInteract();
+          }
+        } else {
+          dx = Math.abs(ddx) > 2 ? Math.sign(ddx) : 0;
+          dy = Math.abs(ddy) > 2 ? Math.sign(ddy) : 0;
+          const before = this.pos.x + this.pos.y;
+          this.time.delayedCall(0, () => {
+            this.clickStuckMs = Math.abs(this.pos.x + this.pos.y - before) < 0.01 ? this.clickStuckMs + delta : 0;
+            if (this.clickStuckMs > 600) this.clickPath = [];
+          });
+        }
+      }
       if (dx || dy) {
         this.moving = true;
         if (Math.abs(dx) >= Math.abs(dy) && dx) this.facing = dx < 0 ? 'left' : 'right';
@@ -1766,6 +1811,12 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       }
     }
 
+    this.updateInteractHint(canMove);
+    this.objectiveAcc -= delta;
+    if (this.objectiveAcc <= 0) {
+      this.objectiveAcc = 250;
+      this.ui.setObjective(this.locked && !this.isChasing() ? null : this.objective());
+    }
     this.stamina = Phaser.Math.Clamp(this.stamina + (running ? -MOVE.staminaDrain : MOVE.staminaRegen) * dt, 0, MOVE.staminaMax);
     this.drawStamina();
     this.mafuyu?.update(this.facing, this.moving || this.autoWalking, delta);
@@ -1773,6 +1824,110 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.updateGhost(delta);
     this.updateCycleAmbience(time, delta);
     this.onUpdate(time, delta);
+  }
+
+  // ------------------------------------------------------------ 引导：当前目标、调查提示、鼠标
+
+  /** 现在要做的事（左上角）。子类按剧情进度返回一句话；null 不显示 */
+  protected objective(): string | null {
+    return null;
+  }
+
+  /** 这一格能不能调查（物件、调查点） */
+  private interactableAt(tile: { x: number; y: number }): boolean {
+    const ch = this.charAt(tile.x, tile.y);
+    if (this.examineAt(ch, tile)) return true;
+    const obj = this.room.objects[ch];
+    return !!obj && obj.id !== 'pillar' && obj.id !== 'sink_row' && obj.id !== 'desk_pile' && obj.id !== 'locker_fallen';
+  }
+
+  private probeTile(): { x: number; y: number } {
+    const v = DIR_VEC[this.facing];
+    return this.worldToTile(this.pos.x + v.x * (TILE * 0.75), this.pos.y - 8 + v.y * (TILE * 0.75));
+  }
+
+  private updateInteractHint(canMove: boolean): void {
+    const h = this.interactHint;
+    if (!h) return;
+    const tile = this.probeTile();
+    const show = canMove && this.interactableAt(tile);
+    h.setVisible(show);
+    if (show) h.setPosition(this.player.x, this.player.y - PLAYER_HEIGHT - 14 + Math.sin(this.time.now / 200) * 2);
+  }
+
+  /**
+   * 鼠标左键：点地面走过去；点物件 / 调查点，走到旁边再调查。
+   * 对话框打开时由 UI 处理（点一下继续）。
+   */
+  /** 鼠标点击怎么处理：自由走动时由房间处理（点物件去调查），其余时候等于按空格 */
+  clickMode(): string {
+    return this.locked || this.transitioning || this.ui.isBlocking() ? 'space' : 'world';
+  }
+
+  private onPointer(p: Phaser.Input.Pointer): void {
+    if (p.rightButtonDown() || this.clickMode() !== 'world') return;
+    const w = this.cameras.main.getWorldPoint(p.x, p.y);
+    const at = this.worldToTile(w.x, w.y);
+    // 物件画得比占地高：点在图的上半部分（往下一两格才是占地）也算点到它
+    const goal = [0, 1, 2].map((d) => ({ x: at.x, y: at.y + d })).find((t) => this.interactableAt(t));
+    if (!goal) return; // 只响应能调查的东西；点地面不走路
+    const wantsInteract = true;
+    const targets: { x: number; y: number }[] = [];
+    for (const d of Object.values(DIR_VEC)) {
+      const t = { x: goal.x + d.x, y: goal.y + d.y };
+      if (!this.isSolid(this.charAt(t.x, t.y))) targets.push(t);
+    }
+    if (!targets.length) {
+      // 点的是墙里面一大块物件的中间：找离它最近的可走格
+      for (let r = 2; r <= 4 && !targets.length; r++)
+        for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
+          const t = { x: goal.x + dx, y: goal.y + dy };
+          if (!this.isSolid(this.charAt(t.x, t.y))) targets.push(t);
+        }
+    }
+    const path = this.findPath(this.playerTile(), targets);
+    if (!path) return;
+    this.clickPath = path.map((t) => {
+      const c = this.tileCenter(t.x, t.y);
+      return { x: c.x, y: c.y + 8 };
+    });
+    this.clickInteract = wantsInteract ? goal : undefined;
+    this.clickStuckMs = 0;
+    if (!this.clickPath.length && this.clickInteract) {
+      // 已经站在旁边了：直接调查
+      this.clickPath = [{ x: this.pos.x, y: this.pos.y }];
+    }
+  }
+
+  /** 格子上的广度优先寻路，返回不含起点的路线 */
+  private findPath(from: { x: number; y: number }, goals: { x: number; y: number }[]): { x: number; y: number }[] | null {
+    const key = (t: { x: number; y: number }) => `${t.x},${t.y}`;
+    const goalSet = new Set(goals.map(key));
+    const prev = new Map<string, string | null>([[key(from), null]]);
+    const queue = [from];
+    while (queue.length) {
+      const cur = queue.shift()!;
+      if (goalSet.has(key(cur))) {
+        const out: { x: number; y: number }[] = [];
+        for (let k: string | null = key(cur); k && k !== key(from); k = prev.get(k) ?? null) {
+          const [x, y] = k.split(',').map(Number);
+          out.unshift({ x, y });
+        }
+        return out;
+      }
+      if (prev.size > 4000) break;
+      for (const d of Object.values(DIR_VEC)) {
+        const n = { x: cur.x + d.x, y: cur.y + d.y };
+        const k = key(n);
+        if (prev.has(k)) continue;
+        const ch = this.charAt(n.x, n.y);
+        // 出口格只在它本身就是目标时才走进去（不然会半路出门）
+        if (this.isSolid(ch) || (/[0-9]/.test(ch) && !goalSet.has(k))) continue;
+        prev.set(k, key(cur));
+        queue.push(n);
+      }
+    }
+    return null;
   }
 
   /**
