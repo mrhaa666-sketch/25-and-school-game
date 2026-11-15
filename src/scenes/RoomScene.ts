@@ -1311,7 +1311,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
               ? this.isSolid(this.charAt(comp.x0, comp.y0 - 1)) || comp.y0 === 0
                 ? { x, y: y - TILE * 1.2, w: cw, h: chh + TILE * 1.2 } // 上墙 / 侧墙：向上多占一点
                 : { x, y, w: cw, h: chh } // 下墙：上方是地板，不往上画
-              : { x: x - cw * 0.08, y: y - chh * 0.35, w: cw * 1.16, h: chh * 1.35 + 4 },
+              : // 立在地上的物件（正面 3/4 俯视的新图）：宽度按占地的宽，底边对齐占地的下沿，高度向上延伸（最多再高 2.6 格）
+                { x: x + 2, y: y + chh - (chh + TILE * 2.6), w: cw - 4, h: chh + TILE * 2.6 },
           )
         : null;
       if (img) {
