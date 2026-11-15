@@ -527,7 +527,7 @@ export const ROOMS: Record<string, RoomDef> = {
     id: 'classroom3',
     floor: 3,
     doors: { '1': 'corridor3_long' },
-    lights: [...lampRow(4.5, 4, 14, 5, 4)],
+    lights: [...lampRow(4.5, 3, 15, 12, 4)], // 两盏，避开绘名所在的那一列
     decor: [
       { tex: 'decal:decal_chalk_01', x: 8, y: 1.6, scale: 2.4, alpha: 0.6 },
       { tex: 'mafuyu_award_wall', x: 13.5, y: -0.9, scale: 3, wall: true, cycle: [1] },

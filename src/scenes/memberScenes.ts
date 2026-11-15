@@ -25,7 +25,7 @@ export const MEMBER_ART: Record<string, string> = {
  * 这些成员场景的素材是一整幅画面（房间一角），不适合直接摆在地图里：
  * 房间里只放一个克制的痕迹，真冬「看到」时再把整幅画面浮现出来（showMemberOverlay）。
  */
-const OVERLAY_ONLY = new Set(['hanged_ena']);
+const OVERLAY_ONLY = new Set<string>(); // 绘名直接画在房间里，不再浮现只有一双鞋的小图
 
 export function hasMemberOverlay(scene: Phaser.Scene, id: string): boolean {
   return OVERLAY_ONLY.has(id) && scene.textures.exists(tex('scn', MEMBER_ART[id]));

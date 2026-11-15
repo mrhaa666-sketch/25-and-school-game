@@ -39,6 +39,7 @@ export class Act04Scene extends RoomScene {
   private nearAcc = 0;
   private examDoorX: number | null = null;
   private examDoorY = 0;
+  private memberLight?: { x: number; y: number; radius: number; intensity: number };
   private redEdge?: Phaser.GameObjects.Image;
   /** 讲台上的剪刀（拿走后消失） */
   private scissorsImg?: Phaser.GameObjects.GameObject;
@@ -116,11 +117,25 @@ export class Act04Scene extends RoomScene {
       this.facing = 'right';
       this.syncPlayer();
       const id = GameState.cycleDef.scenes.floor3;
+      // 绳子吱呀一声，视线被引过去：镜头转向她，她身上亮起一道侧光
+      Audio.play('rope_creak', { volume: 0.7 });
+      const mp = this.memberPos();
+      this.memberLight = { x: mp.x - 10, y: mp.y - 40, radius: TILE * 2.2, intensity: 0.85 };
+      this.extraLights.push(this.memberLight);
+      const cam = this.cameras.main;
+      cam.stopFollow();
+      cam.pan(mp.x, mp.y - 40, 900, 'Sine.easeInOut');
+      await this.wait(1000);
       // 有绘名的 CG 时由 CG 来演（台词 act04.member 登记了 CG），不再叠只有鞋的那张小图
       const close = hasMemberOverlay(this, id) && !this.textures.exists(tex('cg', 'cg_act04_ena')) ? showMemberOverlay(this, id) : null;
       await this.wait(2200);
       await this.say(this.t('member'));
       await close?.();
+      cam.pan(this.player.x, this.player.y, 600, 'Sine.easeInOut');
+      await this.wait(650);
+      if (this.room.map[0].length * TILE > cam.width / cam.zoom) cam.startFollow(this.player, true, 0.12, 0.12);
+      // 侧光减弱，但一直留着一点：她一直在那里
+      if (this.memberLight) this.memberLight.intensity = 0.45;
       // 楼上传来嘶吼，窗外的绳子绷紧，怪物正在往下爬
       this.cameras.main.shake(400, 0.006);
       Audio.play('roar', { volume: 0.7, rate: 0.85 });
@@ -306,6 +321,7 @@ export class Act04Scene extends RoomScene {
         this.ui.say(this.t('door_before'));
         return true;
       }
+      this.extraLights = []; // 教室里的侧光不要带到走廊
       this.loadRoom('corridor3_long', '1');
       void this.corridorEnter();
       return true;
@@ -341,8 +357,6 @@ export class Act04Scene extends RoomScene {
       } else this.lingerMs = 0;
       return;
     }
-    // 没去看那扇门、直接往前走：走出一段后门也会被撞开
-    if (this.room.id === 'corridor3_long' && this.chase === 'none' && !this.locked && this.playerTile().x >= 16) void this.chaseIntro();
     if (this.chase === 'running') this.updateChase(delta);
   }
 
