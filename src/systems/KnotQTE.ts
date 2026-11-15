@@ -19,7 +19,8 @@ const ARROWS = [
 export function runKnotQTE(scene: Phaser.Scene, title: string): Promise<boolean> {
   return new Promise((resolve) => {
     const n = TIMERS.knotKeys;
-    const perKey = TIMERS.knotKeySec * 1000;
+    const perKey = TIMERS.knotKeySec * 1000 * 1.6; // 放宽：初次玩的人要先找键
+    let slips = 0; // 按错或超时：绳结松一下，前两次还能重来
     const seq = Array.from({ length: n }, () => Phaser.Math.Between(0, ARROWS.length - 1));
     const tier = sanityTier(GameState.save.sanity);
 
@@ -30,6 +31,8 @@ export function runKnotQTE(scene: Phaser.Scene, title: string): Promise<boolean>
     const root = scene.add.container(0, 0).setDepth(1000).setScrollFactor(0);
     root.add(panel(scene, X, Y, W, H, 0.92));
     root.add(scene.add.text(X + 24, Y + 18, title, textStyle(18, COLORS.textDim)));
+    const tip = scene.add.text(X + W / 2, Y + H - 58, '依次按下亮着的方向键（WASD / 方向键）', textStyle(14, COLORS.textDim)).setOrigin(0.5);
+    root.add(tip);
     const keysLayer = scene.add.container(0, 0);
     root.add(keysLayer);
     const glyphs = seq.map((k, i) => {
@@ -71,11 +74,22 @@ export function runKnotQTE(scene: Phaser.Scene, title: string): Promise<boolean>
       });
     };
 
+    /** 失手：前两次只是绳结松了一下，从这一步重来；第三次才真的失败 */
+    const slip = () => {
+      slips++;
+      if (slips >= 3) return finish(false);
+      elapsed = 0;
+      scene.cameras.main.shake(160, 0.005);
+      glyphs[index].setColor('#a02020');
+      tip.setText(slips === 1 ? '绳结松了一下……再来（还能失手 1 次）' : '再松就绑不住了（最后一次机会）').setColor('#c87070');
+      scene.time.delayedCall(350, () => !done && render());
+    };
+
     const onKey = (e: KeyboardEvent) => {
       if (done || e.repeat) return;
       const hit = ARROWS.findIndex((a) => a.codes.includes(e.code));
       if (hit < 0) return;
-      if (hit !== seq[index]) return finish(false);
+      if (hit !== seq[index]) return slip();
       index++;
       elapsed = 0;
       if (index >= n) return finish(true);
@@ -90,7 +104,7 @@ export function runKnotQTE(scene: Phaser.Scene, title: string): Promise<boolean>
       bar.fillStyle(0x000000, 0.6).fillRect(X + 40, Y + H - 36, W - 80, 6);
       bar.fillStyle(left < 0.3 ? 0xa02020 : 0xb8b6b0, 1).fillRect(X + 40, Y + H - 36, (W - 80) * Math.max(0, left), 6);
       if (tier === 4) keysLayer.setPosition(Phaser.Math.Between(-4, 4), Phaser.Math.Between(-3, 3));
-      if (left <= 0) finish(false);
+      if (left <= 0) slip();
     };
 
     scene.input.keyboard?.on('keydown', onKey);

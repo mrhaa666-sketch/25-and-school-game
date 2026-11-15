@@ -48,9 +48,10 @@ export class Act03Scene extends RoomScene {
   /** 天花板上垂下来的绳子（装饰） */
   private drawRopes(): void {
     const g = this.add.graphics().setDepth(120);
-    g.lineStyle(1.5, 0x8a7e66, 0.55);
+    g.lineStyle(1, 0x8a7e66, 0.3);
     const rnd = new Phaser.Math.RandomDataGenerator(['ropes']);
-    for (let i = 0; i < 26; i++) {
+    // 装饰用的绳子少放几根、画淡一点，免得和能扯的那一堆混在一起
+    for (let i = 0; i < 6; i++) {
       const x = this.originX + rnd.between(60, 17 * 40 - 20);
       const y = this.originY + rnd.between(60, 9 * 40);
       g.lineBetween(x, this.originY + 40, x, y);
