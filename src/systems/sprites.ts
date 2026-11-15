@@ -48,7 +48,7 @@ const GROUPS: Record<string, { dir: string; names: string[] }> = {
   decal: { dir: 'sprites/decals/', names: ['decal_stain_01', 'decal_stain_02', 'decal_stain_03', 'decal_stain_04', 'decal_paper_01', 'decal_paper_02', 'decal_paper_03', 'decal_crack_01', 'decal_crack_02', 'decal_footprint_01', 'decal_glass_01', 'decal_chalk_01', 'decal_test_01', 'decal_test_02', 'decal_score_01', 'decal_score_02', 'decal_score_03', 'decal_score_04'] },
   backdrop: { dir: 'sprites/backdrop/', names: ['night_view', 'dawn_view'] },
   mon: { dir: 'sprites/monsters/', names: ['faceless', 'flying_score', 'moving_door', 'moving_door_folded', 'note', 'nurse', 'piano', 'piano_strings', 'plaster', 'turned_back', 'mafuyus_child', 'mafuyus_middle', 'mafuyus_high', 'mafuyus_doctor'] },
-  scn: { dir: 'sprites/scenes/', names: ['floor2_clothes', 'floor2_lying', 'floor3_canvas', 'floor3_canvas_cut', 'floor3_hanged', 'music_kanade_blank', 'music_kanade_play', 'music_kanade_shatter'] },
+  scn: { dir: 'sprites/scenes/', names: ['ena_hanged', 'floor2_clothes', 'floor2_lying', 'floor3_canvas', 'floor3_canvas_cut', 'floor3_hanged', 'music_kanade_blank', 'music_kanade_play', 'music_kanade_shatter'] },
   tile: { dir: 'tiles/', names: ['floor_pink_room', 'floor_pipe', 'floor_school',
     'wall_face_school', 'wall_face_ena', 'wall_face_mizuki', 'wall_face_kanade', 'wall_top', 'floor_f3', 'floor_f2', 'floor_f1'] },
   bg: { dir: 'ui/bg/', names: ['climb_facade', 'ending10_lot', 'ending9_home', 'exam_closeup', 'final_gate', 'title', 'stairwell'] },

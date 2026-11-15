@@ -216,7 +216,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.interactHint = this.add.container(0, 0).setDepth(130).setVisible(false);
     // 头顶的提示：「F 拿剪刀」这样，按键加具体的动作
     this.interactHint.add(this.add.text(0, 0, '', { ...textStyle(13, '#f0e8d8'), backgroundColor: '#000000b0', padding: { x: 6, y: 3 } }).setOrigin(0.5, 1));
-    this.glowFx = new Map();
+    this.keyDots = new Map();
     // 黑暗层画在角色和物件上面（100~101），演出特效（110 以上）下面
     this.darkness = new Darkness(this, 105);
     this.roomLights = [];
@@ -824,7 +824,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     // 灯管挂在头顶：画在光斑上方，盖在角色上面（N4 的前景层会接管它）
     const fy = y - TILE * 1.7;
     // 走廊里不画灯管，只有地上的灯光
-    const noTube = this.room.id.includes('corridor');
+    const noTube = true; // 灯管全部不画，只留地上的灯光
     if (noTube) {
       return { tex: 'light_lamp', x, y, radius: TILE * 2.3, intensity: off ? 0 : 0.7, squash: 0.65, flicker: state === 'flicker', phase: tx * 1.7 + ty, lamp: true, broken: off };
     }
@@ -1005,7 +1005,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
       if (!d.rect.active) continue;
       lights.push({ tex: 'light_door_leak', x: d.x, y: d.y, radius: TILE * 1.1, intensity: d.rect.alpha * 0.75, squash: 0.6 });
     }
-    lights.push(...this.extraLights, ...this.keyLights);
+    lights.push(...this.extraLights);
     // N7：怪物画在黑暗层下面，进到光里才看得清；光圈外给它一点微弱的光，
     // 保证始终能看出轮廓、判断位置和距离，不让追逐变难
     for (const a of this.actors) {
@@ -1158,6 +1158,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const wall = Phaser.Display.Color.HexStringToColor(def.wallColor ?? env.wallColor).color;
     this.roomExtras.forEach((o) => o.destroy());
     this.roomExtras = [];
+    this.keyDots.forEach((d) => d.destroy());
+    this.keyDots.clear();
     this.foreground = [];
     this.motes = [];
     this.windowViews = [];
@@ -1903,54 +1905,31 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     return [];
   }
 
-  // 发光：关键物件一直亮、一闪一闪；其它能调查的东西，走近（3 格内）时淡淡地描一圈边
-  private glowFx = new Map<Phaser.GameObjects.Image, Phaser.FX.Glow>();
+  // 关键物件：头顶一个小光点，一闪一闪（只是一个点，不给物件描边、不打大光）
+  private keyDots = new Map<string, Phaser.GameObjects.Arc>();
   private glowAcc = 0;
 
   private updateGlow(): void {
     this.glowAcc -= this.game.loop.delta;
-    const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 260);
-    for (const [img, fx] of this.glowFx) {
-      if (!img.active) this.glowFx.delete(img);
-      else if (img.getData('key')) fx.outerStrength = 2 + 4 * pulse;
-    }
     if (this.glowAcc > 0) return;
     this.glowAcc = 200;
     const keys = new Set(this.locked ? [] : this.keyTargets());
-    const want = new Map<Phaser.GameObjects.Image, boolean>();
-    for (const [ch, imgs] of this.objectImages) {
-      const obj = this.room.objects[ch];
-      if (!obj || !this.interactableAt(this.findTile(ch) ?? { x: -1, y: -1 })) continue;
-      for (const img of imgs) {
-        if (!img.active || !img.visible) continue;
-        const b = img.getBounds();
-        const near = Phaser.Math.Distance.Between(b.centerX, b.bottom, this.pos.x, this.pos.y) < TILE * 3;
-        if (keys.has(ch)) want.set(img, true);
-        else if (near && !this.locked) want.set(img, false);
-      }
+    for (const [ch, dot] of this.keyDots) {
+      if (keys.has(ch) && dot.active) continue;
+      dot.destroy();
+      this.keyDots.delete(ch);
     }
-    for (const [img, fx] of this.glowFx) {
-      if (want.has(img) && (want.get(img) ?? false) === !!img.getData('key')) continue;
-      img.preFX?.remove(fx);
-      this.glowFx.delete(img);
-    }
-    for (const [img, key] of want) {
-      if (this.glowFx.has(img) || !img.preFX) continue;
-      img.setData('key', key);
-      const fx = img.preFX.addGlow(key ? 0xffe8b0 : 0xc8c0b0, key ? 4 : 1.5, 0, false, 0.1, 10);
-      this.glowFx.set(img, fx);
-    }
-    // 关键物件在黑暗里也要看得见：给它一点光
-    this.keyLights = [];
     for (const ch of keys) {
-      const c = this.findTile(ch);
-      if (!c) continue;
-      const w = this.objectCenter(ch);
-      this.keyLights.push({ x: w.x, y: w.y, radius: TILE * 1.6, intensity: 0.55 });
+      if (this.keyDots.has(ch) || !this.findTile(ch)) continue;
+      const img = this.objectImages.get(ch)?.[0];
+      const c = this.objectCenter(ch);
+      const y = img && img.active ? img.getBounds().top + 6 : c.y - 12;
+      const dot = this.add.circle(c.x, y, 3.5, 0xfff2c8, 1).setDepth(131);
+      this.tweens.add({ targets: dot, alpha: 0.25, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.keyDots.set(ch, dot);
     }
   }
 
-  private keyLights: LightSource[] = [];
 
   /**
    * 鼠标左键：点地面走过去；点物件 / 调查点，走到旁边再调查。

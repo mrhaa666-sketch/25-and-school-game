@@ -123,6 +123,8 @@ export class Act04Scene extends RoomScene {
       this.memberLight = { x: mp.x - 10, y: mp.y - 40, radius: TILE * 2.2, intensity: 0.85 };
       this.extraLights.push(this.memberLight);
       const cam = this.cameras.main;
+      const home = { x: cam.midPoint.x, y: cam.midPoint.y };
+      const following = !!(cam as unknown as { _follow: unknown })._follow;
       cam.stopFollow();
       cam.pan(mp.x, mp.y - 40, 900, 'Sine.easeInOut');
       await this.wait(1000);
@@ -131,9 +133,10 @@ export class Act04Scene extends RoomScene {
       await this.wait(2200);
       await this.say(this.t('member'));
       await close?.();
-      cam.pan(this.player.x, this.player.y, 600, 'Sine.easeInOut');
+      // 回到原来的镜头位置
+      cam.pan(home.x, home.y, 600, 'Sine.easeInOut');
       await this.wait(650);
-      if (this.room.map[0].length * TILE > cam.width / cam.zoom) cam.startFollow(this.player, true, 0.12, 0.12);
+      if (following) cam.startFollow(this.player, true, 0.12, 0.12);
       // 侧光减弱，但一直留着一点：她一直在那里
       if (this.memberLight) this.memberLight.intensity = 0.45;
       // 楼上传来嘶吼，窗外的绳子绷紧，怪物正在往下爬

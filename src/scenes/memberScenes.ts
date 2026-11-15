@@ -47,12 +47,19 @@ export function showMemberOverlay(scene: Phaser.Scene, id: string): () => Promis
 export function drawMemberScene(scene: Phaser.Scene, id: string, x: number, y: number, size = 120): Phaser.GameObjects.Container {
   const c = scene.add.container(x, y).setDepth(95);
   if (id === 'hanged_ena') {
-    // 绘名吊在绳子下面：用她的小人，压暗，轻轻晃；不画任何伤口
+    // 绘名吊在绳子下面，已经死了：闭着眼、头垂着、脚尖朝下，脸色发灰，轻轻晃；不画伤口和血
+    // 有专门的图（scn:ena_hanged）就用它；没有就用她闭眼的那一帧，压暗、偏冷、头歪一点
     const frames = officialFrames('ena', 'blink');
-    const body = poseImage(scene, frames[0], 66, frames);
+    const dead = scene.textures.exists(tex('scn', 'ena_hanged'));
+    const body = dead ? poseImage(scene, tex('scn', 'ena_hanged'), 70) : poseImage(scene, frames[frames.length - 1], 66, frames);
     const sway = scene.add.container(0, -150);
     sway.add(scene.add.line(0, 0, 0, 0, 0, 92, 0x8a7e66).setOrigin(0).setLineWidth(2));
-    if (body) sway.add(body.setPosition(0, 150 - 20).setTint(0x6a6a78));
+    if (body) {
+      body.setPosition(0, 150 - 14).setTint(dead ? 0x9a9aa8 : 0x5a5e6e);
+      if (!dead) body.setAngle(7).setScale(body.scaleX * 0.97, body.scaleY * 1.04);
+      body.preFX?.addColorMatrix().saturate(-0.6);
+      sway.add(body);
+    }
     else sway.add(makeFigure(scene, 0, 150 - 20, { ...PALETTE.ena, pose: 'hang', label: '绘名' }));
     c.add(sway);
     c.add(scene.add.ellipse(0, -2, 26, 7, 0x000000, 0.35)); // 地上的影子
