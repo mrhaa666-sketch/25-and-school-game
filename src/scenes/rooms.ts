@@ -372,7 +372,6 @@ export const ROOMS: Record<string, RoomDef> = {
       { tex: 'mizuki_ribbon_03', x: 22.6, y: 3.3, scale: 0.7, angle: -35, cycle: [3] },
       { tex: 'mizuki_ribbon_03', x: 27.4, y: 1.8, scale: 0.6, angle: 70, cycle: [3] },
       // 前景：从天花板垂下来的一根绳子；瑞希周目多一条垂下的缎带
-      { tex: 'rope_hanging', x: 11.5, y: 1.2, scale: 0.5, fg: true, cycle: [1, 2, 3, 4] },
       { tex: 'mizuki_ribbon_01', x: 17.5, y: 0.8, scale: 0.7, fg: true, cycle: [3] },
       { tex: 'mizuki_ribbon_04', x: 23, y: 0.4, scale: 3, fg: true, cycle: [3] },
     ],
@@ -643,7 +642,6 @@ export const ROOMS: Record<string, RoomDef> = {
       { tex: 'mizuki_ribbon_02', x: 15.2, y: -0.6, scale: 0.8, wall: true, cycle: [3] },
       { tex: 'mizuki_ribbon_03', x: 21.5, y: 3.2, scale: 0.7, angle: 40, cycle: [3] },
       { tex: 'mizuki_ribbon_03', x: 25.8, y: 1.5, scale: 0.6, angle: -60, cycle: [3] },
-      { tex: 'rope_hanging', x: 16.5, y: 1.2, scale: 0.5, fg: true, cycle: [1, 2, 3, 4] },
       { tex: 'mizuki_ribbon_01', x: 9.5, y: 0.8, scale: 0.7, fg: true, cycle: [3] },
       { tex: 'mizuki_ribbon_04', x: 22, y: 0.4, scale: 3, fg: true, cycle: [3] },
     ],

@@ -47,6 +47,16 @@ export class Act02Scene extends RoomScene {
     this.cooldownMs = 0;
     this.stareMs = 0;
     this.heading = Math.PI;
+    // 追逐中被抓之后重来：直接回到走廊，护士出现之前（不用再从医务室走一遍）
+    if (this.registry.get('retryFrom') === 'chase1') {
+      this.registry.set('retryFrom', null);
+      this.classLockedSaid = true;
+      this.loadRoom('corridor4', undefined, { x: 22, y: 2 });
+      this.facing = 'right';
+      this.syncPlayer();
+      this.cameras.main.fadeIn(600, 0, 0, 0);
+      return;
+    }
     this.loadRoom('infirmary');
     this.locked = true;
     this.cameras.main.fadeIn(1200, 0, 0, 0);
@@ -54,7 +64,7 @@ export class Act02Scene extends RoomScene {
   }
 
   protected onEnterRoom(roomId: string, firstTime: boolean): void {
-    if (roomId === 'corridor4' && firstTime) {
+    if (roomId === 'corridor4' && firstTime && !this.classLockedSaid) {
       this.time.delayedCall(300, () => this.ui.say(this.t('door_out')));
       this.time.delayedCall(2200, () => Audio.play('cart', { volume: 0.7 })); // 远处有推车滚过
     }
@@ -177,6 +187,12 @@ export class Act02Scene extends RoomScene {
     if (this.room?.id !== 'corridor4' || GameState.isFinal) return;
     if (this.chase === 'before' && this.playerTile().x >= 25) this.startChase();
     if (this.chase === 'running' && this.monster && !this.locked) {
+      // 逃生门的判定放宽：跑到门前一格以内就算进去了
+      const t = this.findTile('2');
+      if (t) {
+        const c = this.tileCenter(t.x, t.y);
+        if (Math.abs(this.pos.x - c.x) < TILE * 0.9 && this.pos.y - c.y < TILE * 1.6) return this.escape();
+      }
       this.stepMonster(this.monster, delta);
       const reach = GameState.cycleDef.monsterA.ai === 'piano' ? CHASE.caughtDist + 10 : CHASE.caughtDist;
       if (this.distToPlayer(this.monster) < reach) this.caught();
@@ -280,7 +296,18 @@ export class Act02Scene extends RoomScene {
         this.drawDoor({ id: 'class_door', color: 0, tex: 'class_door' }, c.x, c.y + TILE / 2, undefined, 0, true);
       }
       Audio.play('door_open', { volume: 0.5 });
-      await this.say(this.t('door_opened'));
+      // 镜头转过去，让玩家亲眼看到开了的那扇门，再转回来
+      const cam = this.cameras.main;
+      const door = t ? this.tileCenter(t.x, t.y) : null;
+      if (door) {
+        cam.stopFollow();
+        cam.pan(door.x, door.y + TILE, 700, 'Sine.easeInOut');
+        await this.wait(750);
+        await this.say(this.t('door_opened'));
+        cam.pan(this.player.x, this.player.y, 500, 'Sine.easeInOut');
+        await this.wait(550);
+        cam.startFollow(this.player, true, 0.12, 0.12);
+      } else await this.say(this.t('door_opened'));
       this.facing = 'left';
       this.syncPlayer();
     });
@@ -295,6 +322,18 @@ export class Act02Scene extends RoomScene {
       });
     };
     this.time.delayedCall(100, begin);
+  }
+
+  /** 逃生门：追逐中在门口亮一块光 */
+  protected keyTargets(): string[] {
+    if (this.chase === 'running' && this.room.id === 'corridor4') {
+      const t = this.findTile('2');
+      if (t) {
+        const c = this.tileCenter(t.x, t.y);
+        this.extraLights = [{ x: c.x, y: c.y + TILE, radius: TILE * 2, intensity: 0.85, squash: 0.7 }];
+      }
+    }
+    return [];
   }
 
   protected objective(): string | null {
@@ -312,6 +351,7 @@ export class Act02Scene extends RoomScene {
     this.locked = true;
     this.cameras.main.shake(300, 0.012);
     this.cameras.main.fadeOut(600, 30, 0, 0);
+    this.registry.set('retryFrom', 'chase1');
     this.time.delayedCall(700, () => triggerEnding(this, 1));
   }
 

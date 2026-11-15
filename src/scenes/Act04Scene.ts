@@ -38,6 +38,7 @@ export class Act04Scene extends RoomScene {
   private elapsed = 0;
   private nearAcc = 0;
   private examDoorX: number | null = null;
+  private examDoorY = 0;
   private redEdge?: Phaser.GameObjects.Image;
   /** 讲台上的剪刀（拿走后消失） */
   private scissorsImg?: Phaser.GameObjects.GameObject;
@@ -59,6 +60,18 @@ export class Act04Scene extends RoomScene {
     this.trash = undefined;
     this.ropeLine = undefined;
     this.scissorsImg = undefined;
+    // 追逐中被抓之后重来：直接回到三楼走廊（剪刀、剪绳都算已经做过）
+    if (this.registry.get('retryFrom') === 'chase2') {
+      this.registry.set('retryFrom', null);
+      this.registry.set('fromRope', false);
+      this.hasScissors = true;
+      this.ropeCut = true;
+      this.memberSeen = true;
+      this.loadRoom('corridor3_long', '1');
+      this.cameras.main.fadeIn(600, 0, 0, 0);
+      void this.corridorEnter();
+      return;
+    }
     this.loadRoom('classroom3');
     this.facing = 'right';
     this.syncPlayer();
@@ -464,11 +477,14 @@ export class Act04Scene extends RoomScene {
       if (ty < 0) ty = 0;
       const c = this.tileCenter(tx, ty);
       this.examDoorX = c.x;
-      this.drawDoor({ id: 'class_door', color: 0, tex: 'class_door' }, c.x, c.y + TILE / 2);
+      this.examDoorY = c.y;
+      this.drawDoor({ id: 'class_door', color: 0, tex: 'class_door' }, c.x, c.y + TILE / 2, undefined, 0, true);
+      this.extraLights.push({ x: c.x, y: c.y + TILE, radius: TILE * 2.2, intensity: 0.9, squash: 0.7 });
       this.clearSwarm();
       this.placeTrash(tx - 2, ty + 3);
     }
-    if (this.examDoorX !== null && Math.abs(this.pos.x - this.examDoorX) < 22) {
+    // 要真的走到门前（门口一格以内）才进去，不是横着越过那条线就算
+    if (this.examDoorX !== null && Math.abs(this.pos.x - this.examDoorX) < TILE * 0.9 && this.pos.y - this.examDoorY < TILE * 1.6) {
       this.chase = 'done';
       this.redEdge?.setAlpha(0);
       this.player.setVisible(false);
@@ -567,6 +583,7 @@ export class Act04Scene extends RoomScene {
       this.tweens.add({ targets: a.obj, x: this.pos.x + Math.cos(ang) * 30, y: this.pos.y + Math.sin(ang) * 14, duration: 500 });
     });
     this.cameras.main.fadeOut(1400, 0, 0, 0);
+    this.registry.set('retryFrom', 'chase2');
     this.time.delayedCall(1500, () => triggerEnding(this, 4));
   }
 

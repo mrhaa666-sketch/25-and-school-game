@@ -73,6 +73,7 @@ export class UIScene extends Phaser.Scene {
     // 右上角：第几周目（补充周目显示「第五周目」……）。终周目隐藏
     this.cycleLabel = this.add.text(GAME_WIDTH - 28, 22, '', textStyle(16, '#6a6660')).setOrigin(1, 0).setDepth(800);
     this.dialogueBox = new DialogueBox(this);
+    this.objectiveText = undefined; // 场景重启后旧的文字对象已经销毁了
     this.phone = new PhoneUI(this);
     this.bag = new InventoryUI(this);
     this.pause = new ListMenu(this, tUi('pauseTitle'), [
@@ -123,7 +124,6 @@ export class UIScene extends Phaser.Scene {
     this.cycleLabel.setVisible(false).setText(cycleCountLabel(s.cycleCount));
     this.filter.update(time, this.registry.get('roomLit') === true);
     if (GameState.lastCheckpointAt > this.savedShownAt) {
-      this.savedShownAt = GameState.lastCheckpointAt;
       this.time.delayedCall(800, () => this.showSaved());
     }
     this.screenText.update(time);
@@ -147,7 +147,7 @@ export class UIScene extends Phaser.Scene {
 
   /** 左上角「现在要做的事」。null 隐藏 */
   setObjective(text: string | null): void {
-    if (!this.objectiveText) {
+    if (!this.objectiveText || !this.objectiveText.active) {
       this.objectiveText = this.add
         .text(26, 58, '', { ...textStyle(19, '#e8e0d0'), backgroundColor: '#000000aa', padding: { x: 10, y: 6 } })
         .setDepth(800)
