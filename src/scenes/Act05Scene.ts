@@ -134,6 +134,8 @@ export class Act05Scene extends RoomScene {
     const seat = this.findTile('X')!;
     const c = this.tileCenter(seat.x, seat.y);
     this.locked = true;
+    // 记下坐下前站的位置（一定是能走的格子），交卷后站回去
+    this.standAt = { x: this.pos.x, y: this.pos.y };
     this.pos.set(c.x, c.y + 26);
     this.facing = 'up';
     this.syncPlayer();
@@ -165,7 +167,30 @@ export class Act05Scene extends RoomScene {
     this.cameras.main.shake(120, 0.003);
     Audio.play('door_open');
     await this.say(this.t('door_open'));
+    // 从座位上站起来，回到课桌旁能走的地方（不然会卡在课桌的碰撞里）
+    this.standUp();
     this.locked = false;
+  }
+
+  private standAt?: { x: number; y: number };
+
+  private standUp(): void {
+    const seat = this.findTile('X')!;
+    let spot = this.standAt;
+    if (!spot || this.blockedBox(spot.x, spot.y, 24, 20)) {
+      // 找课桌周围最近的空地
+      spot = undefined;
+      for (const d of [[0, 1], [-1, 0], [1, 0], [0, -1], [-1, 1], [1, 1]]) {
+        const c = this.tileCenter(seat.x + d[0], seat.y + d[1]);
+        if (!this.blockedBox(c.x, c.y + 8, 24, 20)) {
+          spot = { x: c.x, y: c.y + 8 };
+          break;
+        }
+      }
+    }
+    if (spot) this.pos.set(spot.x, spot.y);
+    this.facing = 'down';
+    this.syncPlayer();
   }
 
   /** 结局 5：其他课桌上的试卷一张一张自己写满，最后她自己的卷子也写满了 */
