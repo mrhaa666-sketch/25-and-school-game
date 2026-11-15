@@ -120,11 +120,22 @@ export class Act01Scene extends RoomScene {
 
     // 头旋转 180 度：脸转过来，嘴角流下黑色液体
     if (girlImg && this.textures.exists('mafuyu_child_turned')) {
+      if (this.textures.exists('mafuyu_child_turning')) {
+        // 头先回过来一半，停一下，再整个转过来
+        girlImg.setTexture('mafuyu_child_turning');
+        Audio.play('sting', { volume: 0.4 });
+        await this.wait(900);
+        girlImg.setTexture('mafuyu_child_turned');
+        Audio.play('sting');
+        this.cameras.main.shake(160, 0.004);
+        await this.wait(400);
+      } else {
       await this.tween({ targets: girlImg, scaleX: girlImg.scaleX * 0.15, duration: 380, ease: 'Sine.easeIn' });
       girlImg.setTexture('mafuyu_child_turned');
       Audio.play('sting');
       this.cameras.main.shake(160, 0.004);
       await this.tween({ targets: girlImg, scaleX: girlImg.scaleY, duration: 380, ease: 'Sine.easeOut' });
+      }
     } else {
       const head = (girl.list[0] as Phaser.GameObjects.Container).list[2] as Phaser.GameObjects.Arc;
       await this.tween({ targets: head, scaleX: 0, duration: 450, ease: 'Sine.easeIn' });

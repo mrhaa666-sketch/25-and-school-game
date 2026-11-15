@@ -30,6 +30,7 @@ export const SPRITE_FILES: Record<string, string> = {
   mafuyu_child_back: `${C}mafuyu_child_back.png`,
   mafuyu_child_turned: `${C}mafuyu_child_turned.png`,
   mafuyu_child_counting: `${C}mafuyu_child_counting.png`,
+  mafuyu_child_turning: `${C}mafuyu_child_turning.png`,
 };
 
 /** 场景类素材：key 就是文件名（不带扩展名），前缀区分类别 */
@@ -41,17 +42,17 @@ const GROUPS: Record<string, { dir: string; names: string[] }> = {
     'fire_box', 'bulletin_board', 'class_sign', 'sink_row', 'broom_locker', 'locker_fallen', 'desk_pile',
     'curtain_bed', 'iv_stand', 'plaster_shelf', 'paint_sink', 'music_stand', 'metronome', 'trophy_case', 'shoes_pair',
     'mafuyu_award_wall', 'ena_portrait_01', 'ena_portrait_02', 'ena_portrait_03', 'ena_portrait_04', 'ena_portrait_05', 'ena_portrait_06',
-    'ena_canvas_pile', 'mizuki_ribbon_01', 'mizuki_ribbon_02', 'mizuki_ribbon_03', 'mizuki_ribbon_04', 'mizuki_mannequin', 'kanade_cup_stack', 'rope_hanging', 'pillar'] },
+    'ena_canvas_pile', 'mizuki_ribbon_01', 'mizuki_ribbon_02', 'mizuki_ribbon_03', 'mizuki_ribbon_04', 'mizuki_mannequin', 'kanade_cup_stack', 'rope_hanging', 'pillar', 'street_lamp', 'exam_own_desk', 'stair_landing', 'burst_door_face'] },
   // CG：剧情关键时刻和结局的插画（1920×1080），缺图时跳过，游戏照常
   cg: { dir: 'ui/cg/', names: ['cg_act01_gate', 'cg_act04_ena', 'cg_act04_swarm', 'cg_act01_girl', 'cg_act02_wake', 'cg_act04_fall', 'cg_act07_fork', 'cg_act09_choir', 'cg_final_outside', 'cg_phone', 'cg_e1', 'cg_e2', 'cg_e3', 'cg_e4', 'cg_e6', 'cg_e7', 'cg_e8',
     'cg_e1_c1', 'cg_e1_c2', 'cg_e1_c3', 'cg_e1_c4', 'cg_e4_c1', 'cg_e4_c2', 'cg_e4_c3', 'cg_e4_c4'] },
-  decal: { dir: 'sprites/decals/', names: ['decal_stain_01', 'decal_stain_02', 'decal_stain_03', 'decal_stain_04', 'decal_paper_01', 'decal_paper_02', 'decal_paper_03', 'decal_crack_01', 'decal_crack_02', 'decal_footprint_01', 'decal_glass_01', 'decal_chalk_01', 'decal_test_01', 'decal_test_02', 'decal_score_01', 'decal_score_02', 'decal_score_03', 'decal_score_04'] },
+  decal: { dir: 'sprites/decals/', names: ['decal_stain_01', 'decal_stain_02', 'decal_stain_03', 'decal_stain_04', 'decal_paper_01', 'decal_paper_02', 'decal_paper_03', 'decal_crack_01', 'decal_crack_02', 'decal_footprint_01', 'decal_glass_01', 'decal_chalk_01', 'decal_test_01', 'decal_test_02', 'decal_score_01', 'decal_score_02', 'decal_score_03', 'decal_score_04', 'decal_tree_shadow_01'] },
   backdrop: { dir: 'sprites/backdrop/', names: ['night_view', 'dawn_view'] },
-  mon: { dir: 'sprites/monsters/', names: ['faceless', 'flying_score', 'moving_door', 'moving_door_folded', 'note', 'nurse', 'piano', 'piano_strings', 'plaster', 'turned_back', 'mafuyus_child', 'mafuyus_middle', 'mafuyus_high', 'mafuyus_doctor'] },
+  mon: { dir: 'sprites/monsters/', names: ['faceless', 'flying_score', 'moving_door', 'moving_door_folded', 'note', 'nurse', 'nurse_alert', 'nurse_lunge', 'piano', 'piano_strings', 'plaster', 'turned_back', 'mafuyus_child', 'mafuyus_middle', 'mafuyus_high', 'mafuyus_doctor'] },
   scn: { dir: 'sprites/scenes/', names: ['ena_hanged', 'floor2_clothes', 'floor2_lying', 'floor3_canvas', 'floor3_canvas_cut', 'floor3_hanged', 'music_kanade_blank', 'music_kanade_play', 'music_kanade_shatter'] },
   tile: { dir: 'tiles/', names: ['floor_pink_room', 'floor_pipe', 'floor_school',
-    'wall_face_school', 'wall_face_ena', 'wall_face_mizuki', 'wall_face_kanade', 'wall_top', 'floor_f3', 'floor_f2', 'floor_f1'] },
-  bg: { dir: 'ui/bg/', names: ['climb_facade', 'ending10_lot', 'ending9_home', 'exam_closeup', 'final_gate', 'title', 'stairwell'] },
+    'wall_face_school', 'wall_face_ena', 'wall_face_mizuki', 'wall_face_kanade', 'wall_top', 'floor_f3', 'floor_f2', 'floor_f1', 'floor_outdoor'] },
+  bg: { dir: 'ui/bg/', names: ['climb_facade', 'ending10_lot', 'ending9_home', 'exam_closeup', 'final_gate', 'title', 'stairwell', 'knot_closeup'] },
   light: { dir: 'sprites/lights/', names: ['light_player', 'light_window', 'light_window_dawn', 'light_lamp', 'light_door_leak'] },
   mat: { dir: 'ui/materials/', names: ['ena_comment', 'ena_paint', 'ena_sketch', 'kanade_cupnoodle', 'kanade_earphones', 'kanade_score', 'mafuyu_blank_paper', 'mafuyu_checkup', 'mafuyu_nameplate', 'mizuki_diary', 'mizuki_postcard', 'mizuki_ribbon'] },
 };

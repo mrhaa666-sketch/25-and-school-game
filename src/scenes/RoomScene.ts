@@ -611,7 +611,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
           .setTint(decal ? shade(0x8a8a8a, 0xc0c0c0) : shade(0xc8c8c8, 0xf0f0f0));
         img.setScale(w / img.width);
         o = img;
-      } else o = this.drawDecorBlock(d, cx, cy, w);
+      } else if (/street_lamp|stair_landing|tree_shadow/.test(d.tex)) continue; // 这几样没图时不画占位
+      else o = this.drawDecorBlock(d, cx, cy, w);
       if (d.fg) {
         this.roomExtras.push(o);
         this.addForeground(o, d.alpha ?? 0.6, w, w * 2);
@@ -1494,7 +1495,11 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   /** 当前周目的地板 / 墙面贴图 */
   /** 地板按楼层选材质；房间自己指定了的不变。周目的差别交给 floorTint */
   private floorTexFor(def: RoomDef): string {
-    if (def.floorTex) return tex('tile', def.floorTex);
+    if (def.floorTex) {
+      const k = tex('tile', def.floorTex);
+      // 指定的地板贴图还没画好（例如校门外的柏油路）：先用一楼的地砖
+      return this.textures.exists(k) ? k : tex('tile', 'floor_f1');
+    }
     const byStorey: Record<number, string> = { 4: 'floor_school', 3: 'floor_f3', 2: 'floor_f2', 1: 'floor_f1' };
     const key = tex('tile', byStorey[def.floor ?? 4] ?? 'floor_school');
     return this.textures.exists(key) ? key : tex('tile', 'floor_school');

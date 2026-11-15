@@ -285,7 +285,13 @@ export const ROOMS: Record<string, RoomDef> = {
     // 第一幕：校门外。后墙是学校的围墙和大门，地面是石砖
     id: 'school_gate',
     outdoor: true,
-    floorTex: 'floor_f1',
+    floorTex: 'floor_outdoor',
+    decor: [
+      { tex: 'street_lamp', x: 4.5, y: 0.9, scale: 1, wall: true, cycle: [1, 2, 3, 4, 'final'] },
+      { tex: 'street_lamp', x: 19.5, y: 0.9, scale: 1, wall: true, cycle: [1, 2, 3, 4, 'final'] },
+      { tex: 'decal:decal_tree_shadow_01', x: 2.5, y: 3.5, scale: 3.5, alpha: 0.7, cycle: [1, 2, 3, 4, 'final'] },
+      { tex: 'decal:decal_tree_shadow_01', x: 21, y: 4, scale: 3, angle: 140, alpha: 0.6, cycle: [1, 2, 3, 4, 'final'] },
+    ],
     map: [
       '##########GGGG##########',
       '#......................#',
@@ -599,7 +605,7 @@ export const ROOMS: Record<string, RoomDef> = {
       C: { id: 'clock', color: 0x7a7468, tex: 'wall_clock', wall: true },
       T: { id: 'lectern', color: 0x5a4a3a, tex: 'lectern' },
       d: { id: 'exam_desk', color: 0x4a4038, tex: 'school_desk_paper' },
-      X: { id: 'own_desk', color: 0x4a4038, tex: 'school_desk_paper' },
+      X: { id: 'own_desk', color: 0x4a4038, tex: 'school_desk_paper', look: 'exam_own_desk' },
     },
     exits: {},
     spawn: { x: 8, y: 8 },
@@ -611,6 +617,7 @@ export const ROOMS: Record<string, RoomDef> = {
     floor: 2,
     doors: { '1': 'corridor2' },
     decor: [
+      { tex: 'stair_landing', x: 2, y: 1.6, scale: 2, cycle: [1, 2, 3, 4, 'final'] },
       { tex: 'decal:decal_crack_01', x: 6, y: 2.4, scale: 2.2 },
       { tex: 'decal:decal_crack_02', x: 2.4, y: 1.4, scale: 1.4, angle: 60 },
     ],

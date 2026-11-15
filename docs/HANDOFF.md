@@ -65,7 +65,8 @@ npx tsc --noEmit   # 类型检查
 - 设置菜单：亮度、减弱闪光和晃屏、加长限时。
 - 背包里显示手上正拿着的关键物品（绳子、剪刀）。
 
-**美术（提示词都在 `docs/art-prompts-fix.md`）**
+**美术（统一提示词：`docs/art-prompts-ALL.md`，最前面有清单和朝向规则）**
+- 「代码待接」的三项：`nurse_alert` / `nurse_lunge`（四楼护士发现玩家、扑过来时换图），`knot_closeup`（打结时的背景特写，`src/systems/KnotQTE.ts`），`burst_door_face`（三楼走廊那扇门被撞开前，门缝里露出笑脸，`Act04Scene.chaseIntro`）。素材名已登记在 `sprites.ts`，只差在场景里用上。
 - 要重出的：`exit_threshold`、`ena_portrait_02`~`06`（一张图只画一幅画像）、`mizuki_ribbon_03`、`decal_test_01/02`。
 - 还没做的：`mizuki_mannequin`、`rope_hanging`（目前已经从走廊里去掉了）、`cg_act04_fall`、`cg_act04_ena`、`cg_act04_swarm`、`cg_act01_gate`。
 
