@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { Audio } from '../systems/audio';
 import { CHASE, SANITY_COST, TILE } from '../core/constants';
 import { GameState } from '../core/GameState';
-import { makeMonsterById } from '../systems/figures';
+import { makeMonsterById, setMonsterPose } from '../systems/figures';
 import { godMode } from './debug';
 import { actKey, startAct, triggerEnding } from './flow';
 import { hintLevel } from '../core/progress';
@@ -285,6 +285,8 @@ export class Act02Scene extends RoomScene {
       Audio.play('sting', { volume: 0.6 });
       await this.tween({ targets: this.monster!.obj, alpha: 1, duration: 1400 });
       await this.say(this.t('monster_appear').map((l) => l.replace('{monster}', name)));
+      // 发现了真冬（有姿势图的怪物才换）
+      setMonsterPose(this, this.monster!.obj, def.id, `${def.id}_alert`);
       this.cameras.main.shake(300, 0.01);
       this.cameras.main.flash(100, 60, 0, 0);
       Audio.play('roar');
@@ -318,7 +320,9 @@ export class Act02Scene extends RoomScene {
       this.seen = true; // 出现时本来就在视野里：要先移开视线、再看回去，门才会冲过来
       this.cooldownMs = 0;
       this.time.delayedCall(CHASE.chase1Delay, () => {
-        if (this.monster) this.monster.speed = CHASE.chase1Speed;
+        if (!this.monster) return;
+        this.monster.speed = CHASE.chase1Speed;
+        setMonsterPose(this, this.monster.obj, def.id, `${def.id}_lunge`); // 扑过来
       });
     };
     this.time.delayedCall(100, begin);

@@ -140,6 +140,24 @@ export function makeMonsterById(
   return c;
 }
 
+/**
+ * 换怪物的姿势图（例如护士：nurse → nurse_alert → nurse_lunge）。
+ * 新图缺失时什么也不做，保持原来的样子。身高按原图算，脚底对齐。
+ */
+export function setMonsterPose(scene: Phaser.Scene, c: Phaser.GameObjects.Container, id: string, pose: string): void {
+  const art = MONSTER_ART[id];
+  const key = tex('mon', pose);
+  if (!art || !scene.textures.exists(key)) return;
+  const old = c.list.find((o): o is Phaser.GameObjects.Image => o instanceof Phaser.GameObjects.Image);
+  if (!old || old.texture.key === key) return;
+  const img = poseImage(scene, key, art.height);
+  if (!img) return;
+  img.setTint(0xd0d0d0);
+  scene.tweens.killTweensOf(old);
+  c.replace(old, img, true);
+  scene.tweens.add({ targets: img, angle: { from: -2, to: 2 }, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+}
+
 /** 第三幕拽绳 / 第四幕顺绳下降时，怪物换成的样子（交接文档 4.2 绳子事件） */
 export const ROPE_VARIANT: Record<string, string> = {
   moving_door: 'moving_door_folded', // 门板折叠、卷起来缠住绳子

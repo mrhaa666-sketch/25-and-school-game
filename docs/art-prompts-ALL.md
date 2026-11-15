@@ -22,9 +22,9 @@
 | `cg_e1_c1.png` ~ `cg_e1_c4.png`、`cg_e4_c1.png` ~ `cg_e4_c4.png` | ui/cg/ | C | 可选（第 13 节） |
 | `floor_outdoor.png`、`street_lamp.png`、`decal_tree_shadow_01.png` | tiles/、sprites/objects/、sprites/decals/ | A/B | 新做（第 14 节） |
 | `mafuyu_child_turning.png` | sprites/characters/ | D | 新做 |
-| `nurse_alert.png`、`nurse_lunge.png` | sprites/monsters/ | A | 新做（代码待接） |
-| `knot_closeup.png` | ui/bg/ | C | 新做（代码待接） |
-| `burst_door_face.png` | sprites/objects/ | A | 新做（代码待接） |
+| `nurse_alert.png`、`nurse_lunge.png` | sprites/monsters/ | A | 新做 |
+| `knot_closeup.png` | ui/bg/ | C | 新做 |
+| `burst_door_face.png` | sprites/objects/ | A | 新做 |
 | `exam_own_desk.png` | sprites/objects/ | A | 新做 |
 | `stair_landing.png` | sprites/objects/ | A | 新做 |
 | `title.png`、`ending10_lot.png` | ui/bg/ | C | 重画 |
@@ -357,7 +357,7 @@ Negative: perspective, 3D, side view, hard edges, bright, high contrast, white b
 
 # 第二部分：按试玩报告新增的美术
 
-下面这些来自试玩报告的意见。标「已接好」的放进去就生效；标「代码待接」的，图做好后还要改代码才能用（交接文档里有记录）。
+下面这些来自试玩报告的意见。代码都已经接好，放进对应文件夹就生效。
 
 ## 14. 第一幕校门外（户外感）
 
@@ -394,7 +394,7 @@ Negative: perspective, 3D, side view, hard edges, bright, high contrast, white b
 内容：和附图同一个小女孩、同样的大小和站位。身体仍然背对镜头，只有头转过来了一半：能看到半边侧脸和一只眼睛的轮廓，肩膀还没有动。表情空白。
 ```
 
-## 16. 护士鬼的另外两种状态（sprites/monsters/，代码待接）
+## 16. 护士鬼的另外两种状态（sprites/monsters/）
 
 【附图】`nurse.png`（现有，站着的样子）
 
@@ -408,7 +408,7 @@ Negative: perspective, 3D, side view, hard edges, bright, high contrast, white b
 | `nurse_alert.png` | 发现了真冬：身体还站着，头猛地歪向镜头，一只手抬起来 |
 | `nurse_lunge.png` | 扑过来：身体前倾得很低，两只手往前伸，头发向后飘 |
 
-## 17. 打结的特写背景 `ui/bg/knot_closeup.png`（第三幕，代码待接）
+## 17. 打结的特写背景 `ui/bg/knot_closeup.png`（第三幕）
 
 【附图】`window_night.png`、`ropes.png`
 
@@ -418,7 +418,7 @@ Negative: perspective, 3D, side view, hard edges, bright, high contrast, white b
 构图：绳结正好在画面正中，四周暗。画面下方 1/4 保持很暗（游戏会在那里放按键提示）。
 ```
 
-## 18. 三楼走廊那扇门：`sprites/objects/burst_door_face.png`（代码待接）
+## 18. 三楼走廊那扇门：`sprites/objects/burst_door_face.png`
 
 【附图】`class_door.png`（新）、`mafuyus_high.png`
 

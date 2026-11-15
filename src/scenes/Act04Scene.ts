@@ -387,6 +387,16 @@ export class Act04Scene extends RoomScene {
       this.facing = 'down';
       this.syncPlayer();
       await this.say(this.t('door_check'));
+      // 门开了一条缝，缝里露出一张笑脸（有图才演）
+      const faceKey = tex('obj', 'burst_door_face');
+      if (this.textures.exists(faceKey)) {
+        const d0 = this.objectCenter('B');
+        const face = this.add.image(d0.x, d0.y + TILE / 2, faceKey).setOrigin(0.5, 1).setDisplaySize(TILE * 1.5, TILE * 2.4).setDepth(104).setAlpha(0);
+        await this.tween({ targets: face, alpha: 1, duration: 500 });
+        Audio.play('sting', { volume: 0.5 });
+        await this.wait(1100);
+        face.destroy();
+      }
       for (let i = 0; i < 3; i++) {
         this.cameras.main.shake(160, 0.008);
         Audio.play('door_bang', { rate: 1 + i * 0.05 });

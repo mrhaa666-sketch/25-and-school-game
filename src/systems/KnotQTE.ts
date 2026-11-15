@@ -27,8 +27,15 @@ export function runKnotQTE(scene: Phaser.Scene, title: string): Promise<boolean>
     const W = 520;
     const H = 200;
     const X = (GAME_WIDTH - W) / 2;
-    const Y = GAME_HEIGHT / 2 - H / 2 - 40;
+    const Y = scene.textures.exists('bg:knot_closeup') ? GAME_HEIGHT - H - 30 : GAME_HEIGHT / 2 - H / 2 - 40;
     const root = scene.add.container(0, 0).setDepth(1000).setScrollFactor(0);
+    // 有特写图时铺满画面（窗框、绳圈、手），按键框放在下面
+    const close = 'bg:knot_closeup';
+    if (scene.textures.exists(close)) {
+      const bg = scene.add.image(0, 0, close).setOrigin(0).setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setTint(0xb0b0b0).setAlpha(0);
+      root.add(bg);
+      scene.tweens.add({ targets: bg, alpha: 1, duration: 400 });
+    }
     root.add(panel(scene, X, Y, W, H, 0.92));
     root.add(scene.add.text(X + 24, Y + 18, title, textStyle(18, COLORS.textDim)));
     const tip = scene.add.text(X + W / 2, Y + H - 58, '依次按下亮着的方向键（WASD / 方向键）', textStyle(14, COLORS.textDim)).setOrigin(0.5);
