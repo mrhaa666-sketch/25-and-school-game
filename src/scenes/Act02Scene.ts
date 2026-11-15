@@ -65,7 +65,7 @@ export class Act02Scene extends RoomScene {
 
   protected onEnterRoom(roomId: string, firstTime: boolean): void {
     if (roomId === 'corridor4' && firstTime && !this.classLockedSaid) {
-      this.time.delayedCall(300, () => this.ui.say(this.t('door_out')));
+      this.time.delayedCall(300, () => void this.glimpseEscapeDoor());
       this.time.delayedCall(2200, () => Audio.play('cart', { volume: 0.7 })); // 远处有推车滚过
     }
     if (roomId === 'infirmary' && this.cabinetHint()) {
@@ -324,15 +324,34 @@ export class Act02Scene extends RoomScene {
     this.time.delayedCall(100, begin);
   }
 
-  /** 逃生门：追逐中在门口亮一块光 */
+  /** 第一次进走廊：镜头往左扫到门缝透光的那间教室（之后要逃进去的就是它），再回来 */
+  private async glimpseEscapeDoor(): Promise<void> {
+    await this.cutscene(async () => {
+      await this.say(this.t('door_out'));
+      const t = this.findTile('2');
+      if (!t) return;
+      const c = this.tileCenter(t.x, t.y);
+      const cam = this.cameras.main;
+      cam.stopFollow();
+      cam.pan(c.x, c.y + TILE, 900, 'Sine.easeInOut');
+      await this.wait(950);
+      await this.say(this.t('door_glimpse'));
+      cam.pan(this.player.x, this.player.y, 700, 'Sine.easeInOut');
+      await this.wait(750);
+      cam.startFollow(this.player, true, 0.12, 0.12);
+    });
+  }
+
+  /** 逃生门：门缝里一直透出一点光；追逐中更亮 */
   protected keyTargets(): string[] {
-    if (this.chase === 'running' && this.room.id === 'corridor4') {
+    if (this.room.id === 'corridor4' && this.chase !== 'done') {
       const t = this.findTile('2');
       if (t) {
         const c = this.tileCenter(t.x, t.y);
-        this.extraLights = [{ x: c.x, y: c.y + TILE, radius: TILE * 2, intensity: 0.85, squash: 0.7 }];
+        const strong = this.chase === 'running';
+        this.extraLights = [{ tex: 'light_door_leak', x: c.x, y: c.y + TILE * 0.9, radius: TILE * (strong ? 2 : 1.3), intensity: strong ? 0.85 : 0.5, squash: 0.6 }];
       }
-    }
+    } else this.extraLights = [];
     return [];
   }
 
