@@ -113,6 +113,8 @@ export class Act01Scene extends RoomScene {
     await this.say(this.text('act01.girl'));
     await this.say(this.text('act01.what'));
     await this.say(this.text('act01.walk'));
+    // 瑞希顺着她的视线往校门那边看（那里什么都没有）
+    this.tweens.add({ targets: others[2], x: others[2].x + 20, duration: 700, ease: 'Sine.easeOut' });
     await this.walkPlayerTo(end.x - 60, end.y + 90, 110);
     this.facing = 'up';
     this.syncPlayer();
@@ -145,6 +147,11 @@ export class Act01Scene extends RoomScene {
     await this.wait(1200);
 
     // 一阵眩晕：画面晃、慢慢拉近、越来越模糊、四周变暗，心跳声越来越响
+    // 同伴们发现她不对劲：奏和绘名跑过来，瑞希慢一步
+    const me = { x: this.player.x, y: this.player.y };
+    this.tweens.add({ targets: others[0], x: me.x - 50, y: me.y - 6, duration: 2600, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: others[1], x: me.x - 44, y: me.y + 26, duration: 2900, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: others[2], x: me.x - 90, y: me.y + 6, duration: 3400, ease: 'Sine.easeInOut', delay: 500 });
     await this.dizzy();
     // 真冬倒下，黑屏
     this.setPlayerPose('mafuyu_fallen', () => makeFigure(this, 0, 0, { ...PALETTE.mafuyu, pose: 'lie' }));
