@@ -212,6 +212,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.setupHudCamera();
     this.clickPath = [];
     this.clickInteract = undefined;
+    this.leaveWarned = new Set();
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onPointer(p));
     this.interactHint = this.add.container(0, 0).setDepth(130).setVisible(false);
     // 头顶的提示：「F 拿剪刀」这样，按键加具体的动作
@@ -254,7 +255,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const ch = this.charAt(tile.x, tile.y);
     // 面前是门（出口）：走进去
     if (/[0-9]/.test(ch)) {
-      if (this.transitioning || this.onExit(ch)) return;
+      if (this.transitioning || this.warnLeavingMaterial() || this.onExit(ch)) return;
       const exit = this.room.exits[ch];
       if (exit) this.changeRoom(exit.to, exit.arriveAt);
       return;
@@ -2064,10 +2065,24 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     return running ? MOVE.runSpeed : MOVE.walkSpeed;
   }
 
+  /** 已经提醒过「还有东西没看」的房间（每个房间只提醒一次） */
+  private leaveWarned = new Set<string>();
+
+  /** 要离开的房间里还有没拿的材料：第一次停下来提醒一句，再走就放行。追逐中不提醒 */
+  private warnLeavingMaterial(): boolean {
+    if (this.isChasing() || this.locked || GameState.isFinal) return false;
+    if (!this.materialsHere().length || this.leaveWarned.has(this.room.id)) return false;
+    this.leaveWarned.add(this.room.id);
+    this.bounceBack();
+    this.ui.say(this.text('cycle.leave_with_material'));
+    return true;
+  }
+
   private checkExit(): void {
     const t = this.playerTile();
     const ch = this.charAt(t.x, t.y);
     if (!/[0-9]/.test(ch) || this.transitioning) return;
+    if (this.warnLeavingMaterial()) return;
     if (this.onExit(ch)) return;
     const exit = this.room.exits[ch];
     if (exit) this.changeRoom(exit.to, exit.arriveAt);

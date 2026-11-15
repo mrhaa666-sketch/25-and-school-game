@@ -545,6 +545,9 @@
       "pink_door_locked": [
         "粉色的门锁着。",
         "门后的说话声停了。"
+      ],
+      "leave_with_material": [
+        "@真冬 ……这里，好像还有什么没看。"
       ]
     },
     "finalrun": {
