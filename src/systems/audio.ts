@@ -148,6 +148,8 @@ class AudioImpl {
     const from = s.volume ?? 0;
     const start = performance.now();
     const step = () => {
+      // 淡入淡出途中声音已经被销毁（换场景、换频道）：直接停下
+      if (!s.manager || s.pendingRemove) return;
       const k = Math.min(1, (performance.now() - start) / Math.max(1, ms));
       s.setVolume?.(from + (to - from) * k);
       if (k < 1) requestAnimationFrame(step);

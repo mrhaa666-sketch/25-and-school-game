@@ -1470,7 +1470,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const name = { 1: 'school', 2: 'ena', 3: 'mizuki', 4: 'kanade', final: 'school' }[c] ?? 'school';
     const key = tex('tile', `wall_face_${name}`);
     if (this.textures.exists(key)) return key;
-    return tex('tile', c === 2 ? 'wall_school_ena' : c === 3 ? 'wall_school_mizuki' : 'wall_school');
+    return tex('tile', 'wall_face_school'); // 周目的立面没到时，用学校通用的立面
   }
 
   /**

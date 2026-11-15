@@ -212,13 +212,13 @@ function buildLongCorridor(): RoomDef {
       }
       // 教室里的课桌（留出中间一排走道）
       for (let x = x0 + 2; x <= x1 - 2; x += 2) set(x, 2, 'd');
-      // 门洞：上墙开两格宽
-      for (const x of [gx - 4, gx - 3, gx + 4, gx + 5]) set(x, TOP, '.');
+      // 门洞：上墙开三格宽（两格太窄，奔跑中往上拐容易卡在门框上）
+      for (const x of [gx - 5, gx - 4, gx - 3, gx + 4, gx + 5, gx + 6]) set(x, TOP, '.');
       for (let x = x0 - 1; x <= x1 + 1; x++) doorFree.add(x);
       gates.push({
         startX: gx - 5,
         endX: gx + 6,
-        wps: [{ x: gx - 3, y: 7 }, { x: gx - 3, y: 3.5 }, { x: gx + 5, y: 3.5 }, { x: gx + 5, y: 7 }],
+        wps: [{ x: gx - 4, y: 7 }, { x: gx - 4, y: 3.5 }, { x: gx + 5, y: 3.5 }, { x: gx + 5, y: 7 }],
       });
     }
     for (let x = gx - 2; x <= gx + 5; x++) doorFree.add(x);
