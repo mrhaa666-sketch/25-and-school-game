@@ -148,7 +148,10 @@ export class UIScene extends Phaser.Scene {
   /** 左上角「现在要做的事」。null 隐藏 */
   setObjective(text: string | null): void {
     if (!this.objectiveText) {
-      this.objectiveText = this.add.text(28, 58, '', textStyle(16, '#b8b0a0')).setDepth(800).setAlpha(0);
+      this.objectiveText = this.add
+        .text(26, 58, '', { ...textStyle(19, '#e8e0d0'), backgroundColor: '#000000aa', padding: { x: 10, y: 6 } })
+        .setDepth(800)
+        .setAlpha(0);
     }
     const t = this.objectiveText;
     if (!text) {
@@ -158,8 +161,9 @@ export class UIScene extends Phaser.Scene {
     }
     if (t.getData('v') === text) return;
     t.setData('v', text);
-    t.setText(`▸ ${text}`).setAlpha(0);
-    this.tweens.add({ targets: t, alpha: 1, duration: 500 });
+    t.setText(`目标　${text}`).setAlpha(0);
+    // 目标换了：闪两下，让玩家注意到
+    this.tweens.chain({ targets: t, tweens: [{ alpha: 1, duration: 300 }, { alpha: 0.4, duration: 250 }, { alpha: 1, duration: 250 }, { alpha: 0.4, duration: 250 }, { alpha: 1, duration: 300 }] });
   }
 
   /** 是否有界面挡住玩家操作 */

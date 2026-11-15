@@ -50,7 +50,7 @@ export class Act02Scene extends RoomScene {
     this.loadRoom('infirmary');
     this.locked = true;
     this.cameras.main.fadeIn(1200, 0, 0, 0);
-    this.time.delayedCall(900, () => this.ui.say(this.t('wake'), () => (this.locked = false)));
+    this.time.delayedCall(900, () => void this.cutscene(() => this.say(this.t('wake'))));
   }
 
   protected onEnterRoom(roomId: string, firstTime: boolean): void {
@@ -301,7 +301,7 @@ export class Act02Scene extends RoomScene {
     if (this.chase === 'running') return '逃进走廊最左边那间开了门的教室！';
     if (this.chase !== 'before') return null;
     if (this.room.id === 'infirmary') return '离开医务室（下方的门）';
-    if (this.room.id === 'corridor4') return this.classLockedSaid ? '教室进不去。沿着走廊走到尽头看看' : '沿着走廊看看';
+    if (this.room.id === 'corridor4') return '门都锁着。沿着走廊往右，走到尽头看看';
     return '回到走廊';
   }
 

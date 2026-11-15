@@ -253,6 +253,13 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const probe = { x: this.pos.x + v.x * (TILE * 0.75), y: this.pos.y - 8 + v.y * (TILE * 0.75) };
     const tile = this.worldToTile(probe.x, probe.y);
     const ch = this.charAt(tile.x, tile.y);
+    // 面前是门（出口）：走进去
+    if (/[0-9]/.test(ch)) {
+      if (this.transitioning || this.onExit(ch)) return;
+      const exit = this.room.exits[ch];
+      if (exit) this.changeRoom(exit.to, exit.arriveAt);
+      return;
+    }
     // L3：一句话的调查点。文字还没写的时候没有反应
     const ex = this.examineAt(ch, tile);
     if (ex) {
@@ -1161,7 +1168,8 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     const texturedFloor = this.textures.exists(floorKey);
     const isBack = new Set(back.map((c) => `${c.x},${c.y}`));
     // 立面：新的 wall_face_*（512×768 = 2 格宽 3 格高）；没有就先用旧墙贴图顶替
-    const faceKey = def.wallTex ? tex('tile', def.wallTex) : this.facadeTex();
+    // 室外（校门外）：后墙的位置画夜空和远处的屋顶，再加一道围栏
+    const faceKey = def.outdoor ? this.backdropKey() : def.wallTex ? tex('tile', def.wallTex) : this.facadeTex();
     const texturedFace = this.textures.exists(faceKey);
     const topKey = def.wallTex ? tex('tile', def.wallTex) : tex('tile', 'wall_top');
     const texturedTop = this.textures.exists(topKey);
@@ -1265,13 +1273,24 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     if (texturedFace && back.length) {
       // 每一排后墙一条：横向按 2 格一个周期平铺（和格子对齐），纵向正好 3 格不重复
       const src = this.textures.get(faceKey).getSourceImage();
-      const sx = (TILE * 2) / src.width;
       const sy = (TILE * FACADE_ROWS) / src.height;
+      const sx = def.outdoor ? sy : (TILE * 2) / src.width;
       for (const y of new Set(back.map((c) => c.y))) {
         const top = this.originY + (y + 1 - FACADE_ROWS) * TILE;
         const rowMask = this.make.graphics({}, false);
         for (const c of back) if (c.y === y) rowMask.fillRect(this.originX + c.x * TILE, top, TILE, FACADE_ROWS * TILE);
-        tiled(faceKey, rowMask, { x: this.originX, y: top, w: worldW, h: FACADE_ROWS * TILE }, sx, sy, shade(0x808080, 0xb8b8b8), -18);
+        tiled(faceKey, rowMask, { x: this.originX, y: top, w: worldW, h: FACADE_ROWS * TILE }, sx, sy, def.outdoor ? 0x9a9aa8 : shade(0x808080, 0xb8b8b8), -18);
+      }
+      if (def.outdoor) {
+        // 围栏：两道横杆加一排竖杆，画在后墙下半部分
+        const f = this.add.graphics();
+        this.roomLayer.add(f);
+        for (const c of back) {
+          const px = this.originX + c.x * TILE;
+          const base = this.originY + (c.y + 1) * TILE;
+          f.fillStyle(0x15151a, 1).fillRect(px, base - TILE * 1.3, TILE, 4).fillRect(px, base - TILE * 0.5, TILE, 4);
+          for (let k = 0; k < 4; k++) f.fillRect(px + 4 + k * 10, base - TILE * 1.45, 3, TILE * 1.45);
+        }
       }
     }
     faceMask.destroy();
@@ -1836,6 +1855,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   /** 这一格能不能调查（物件、调查点） */
   private interactableAt(tile: { x: number; y: number }): boolean {
     const ch = this.charAt(tile.x, tile.y);
+    if (/[0-9]/.test(ch)) return true; // 门：按 F 走进去
     if (this.examineAt(ch, tile)) return true;
     const obj = this.room.objects[ch];
     return !!obj && obj.id !== 'pillar' && obj.id !== 'sink_row' && obj.id !== 'desk_pile' && obj.id !== 'locker_fallen';
@@ -1937,7 +1957,23 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   private cornerAssist(axis: 'x' | 'y', dir: number, step: number): void {
     const t = this.playerTile();
     const ahead = axis === 'y' ? this.charAt(t.x + dir, t.y) : this.charAt(t.x, t.y + dir);
-    if (this.isSolid(ahead)) return;
+    if (this.isSolid(ahead)) {
+      // 正前方是墙，但斜前方是门或通道（没对准门口）：往那边挪一点
+      for (const side of [-1, 1]) {
+        const s2 = axis === 'x' ? this.charAt(t.x + side, t.y + dir) : this.charAt(t.x + dir, t.y + side);
+        if (this.isSolid(s2)) continue;
+        const c = this.tileCenter(axis === 'x' ? t.x + side : t.x, axis === 'x' ? t.y : t.y + side);
+        if (axis === 'x') {
+          const d = Phaser.Math.Clamp(c.x - this.pos.x, -step, step);
+          if (d && !this.blockedBox(this.pos.x + d, this.pos.y, BODY_W, BODY_H)) this.pos.x += d;
+        } else {
+          const d = Phaser.Math.Clamp(c.y + BODY_H / 2 - this.pos.y, -step, step);
+          if (d && !this.blockedBox(this.pos.x, this.pos.y + d, BODY_W, BODY_H)) this.pos.y += d;
+        }
+        return;
+      }
+      return;
+    }
     const c = this.tileCenter(t.x, t.y);
     if (axis === 'y') {
       const target = c.y + BODY_H / 2; // 碰撞盒在格子里居中时的脚下位置

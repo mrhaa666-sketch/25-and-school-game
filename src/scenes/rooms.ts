@@ -125,6 +125,8 @@ export interface RoomDef {
   decor?: RoomDecor[];
   /** 一句话的调查点（L3） */
   examine?: RoomExamine[];
+  /** 室外：后墙的位置画夜空和围栏，不画学校的墙 */
+  outdoor?: boolean;
   /** 追逐走廊的障碍和绕行点（L2） */
   chaseGates?: ChaseGate[];
 }
@@ -282,6 +284,7 @@ export const ROOMS: Record<string, RoomDef> = {
   school_gate: {
     // 第一幕：校门外。后墙是学校的围墙和大门，地面是石砖
     id: 'school_gate',
+    outdoor: true,
     floorTex: 'floor_f1',
     map: [
       '##########GGGG##########',

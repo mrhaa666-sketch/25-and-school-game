@@ -60,7 +60,7 @@
     "endingLabel": "结局",
     "pressToContinue": "按 空格 / F / 鼠标左键 继续",
     "obtained": "拿到了「{name}」。",
-    "controlsHint": "WASD 移动　Shift 奔跑　F 调查 / 使用　E 背包　Tab 手机　鼠标点击 移动和调查　Esc 暂停",
+    "controlsHint": "WASD 移动　Shift 奔跑　F 调查 / 进门　E 背包　Tab 手机　鼠标左键 点物件调查 / 继续对话　Esc 暂停",
     "soundOn": "声音：开",
     "soundOff": "声音：关"
   },

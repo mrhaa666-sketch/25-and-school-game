@@ -47,6 +47,11 @@ export class Act01Scene extends RoomScene {
     const vig = fx?.addVignette(0.5, 0.5, 0.95, 0.2);
     const color = fx?.addColorMatrix();
     Audio.loop('dizzy', 'heartbeat', 600); // 不用 heart 频道：界面每帧会按精神值重设它
+    // 镜头对准真冬并拉近，倾斜时画面边缘不会露出地图外面
+    cam.stopFollow();
+    cam.removeBounds();
+    cam.pan(this.player.x, this.player.y - 30, 800, 'Sine.easeInOut');
+    await this.tween({ targets: cam, zoom: cam.zoom * 1.6, duration: 800, ease: 'Sine.easeInOut' });
     const base = cam.zoom;
     const state = { k: 0 };
     // k 从 0 慢慢到 1：晃动幅度、模糊、暗角、拉近都跟着 k 走
