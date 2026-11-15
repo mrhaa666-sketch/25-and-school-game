@@ -41,7 +41,7 @@ export const TIMERS = {
   climbSec: 8, // 待确认
   chase2Sec: 30, // 待确认
   examBlankPromptSec: 10,
-  inviteRefuseSec: 3,
+  inviteRefuseSec: 7, // 作者确认：延长，留出完整读完选项的时间
 } as const;
 
 /** 追逐与小游戏的手感数值。都是建议值，试玩后再调 */

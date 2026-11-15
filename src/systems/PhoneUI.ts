@@ -123,6 +123,10 @@ export class PhoneUI implements Modal {
 
   private call(): void {
     const s = GameState.save;
+    // 第二次起拨号：电话那头传来半句话（名字已经看不清的人，只有杂音）。不会给任何提示
+    const again = s.phoneCallsThisCycle >= 1;
+    const who = this.contacts()[this.cursor];
+    const voice = !again ? null : isContactGarbled(s, who.id) && !this.restored.has(who.id) ? tUi('phoneStatic') : (tRaw<Record<string, string>>('ui.phoneVoice')[who.id] ?? null);
     if (s.phoneCallsThisCycle >= 1) GameState.deductSanity(SANITY_COST.phoneCall, 'phone');
     GameState.patch({ phoneCallsThisCycle: s.phoneCallsThisCycle + 1 });
     this.mode = 'busy';
@@ -135,7 +139,12 @@ export class PhoneUI implements Modal {
       repeat: 3,
       callback: () => {
         sec++;
-        if (sec < 4) this.status.setText(`00:0${sec}`);
+        if (sec === 2 && voice) {
+          this.status.setText(voice).setColor('#a8a090');
+          // 听不清的说话声，只响一下
+          Audio.loop('phonevoice', 'whisper', 200);
+          this.scene.time.delayedCall(1400, () => Audio.loop('phonevoice', null, 400));
+        } else if (sec < 4 && !(voice && sec > 2)) this.status.setText(`00:0${sec}`).setColor(COLORS.text);
         else {
           this.status.setText(tUi('phoneCallEnded'));
           this.busyTimer = this.scene.time.delayedCall(900, () => this.endBusy());
