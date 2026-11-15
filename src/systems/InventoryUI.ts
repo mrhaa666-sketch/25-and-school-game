@@ -105,9 +105,14 @@ export class InventoryUI implements Modal {
     this.cursor = Math.min(this.cursor, owned.length - 1);
     owned.forEach((m, i) => {
       const sel = i === this.cursor;
-      this.dynamic.add(
-        this.scene.add.text(LIST_X, Y + 84 + i * 34, `${sel ? '›  ' : '   '}${m.name}`, textStyle(20, sel ? COLORS.highlight : COLORS.text)),
-      );
+      const row = this.scene.add.text(LIST_X, Y + 84 + i * 34, `${sel ? '›  ' : '   '}${m.name}`, textStyle(20, sel ? COLORS.highlight : COLORS.text));
+      // 鼠标指到哪一件就看哪一件
+      row.setInteractive({ useHandCursor: true }).on('pointerover', () => {
+        if (this.cursor === i) return;
+        this.cursor = i;
+        this.render();
+      });
+      this.dynamic.add(row);
     });
     const m = owned[this.cursor];
     const px = LIST_X + 300;

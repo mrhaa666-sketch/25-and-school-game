@@ -46,6 +46,12 @@ export class ExamUI {
     this.root = scene.add.container(0, 0, [paper, lines, q]).setDepth(980).setScrollFactor(0).setVisible(false);
     for (let i = 0; i < t.options.length + 2; i++) {
       const row = scene.add.text(X + 70, Y + 150 + i * 56, '', textStyle(24, '#2a2620'));
+      // 鼠标指到哪个选项就选中哪个，点一下（等于空格）确认
+      row.setInteractive({ useHandCursor: true }).on('pointerover', () => {
+        if (!this.root.visible || !row.text) return;
+        this.cursor = i;
+        this.render();
+      });
       this.rows.push(row);
       this.root.add(row);
     }

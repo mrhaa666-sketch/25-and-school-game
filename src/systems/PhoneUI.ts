@@ -43,6 +43,14 @@ export class PhoneUI implements Modal {
     this.root = scene.add.container(0, 0, [bg, this.title, this.status]).setDepth(950).setVisible(false);
     for (let i = 0; i < 6; i++) {
       const t = scene.add.text(X + 40, Y + 100 + i * 52, '', textStyle(26));
+      // 鼠标指到哪一行就选中哪一行，点一下（等于空格）确认
+      t.setInteractive({ useHandCursor: true }).on('pointerover', () => {
+        if (!t.text) return;
+        if (this.mode === 'list' && i !== this.cursor) this.cursor = i;
+        else if (this.mode === 'actions' && i >= 2 && i - 2 !== this.actionCursor) this.actionCursor = i - 2;
+        else return;
+        this.render();
+      });
       this.rows.push(t);
       this.root.add(t);
     }
