@@ -27,6 +27,15 @@ export class Act10Scene extends RoomScene {
     return '从下方的大门离开学校';
   }
 
+  protected keyTargets(): string[] {
+    return ['G'];
+  }
+
+  protected verbFor(ch: string, tile: { x: number; y: number }): string {
+    if (this.room.objects[ch]?.id === 'gate') return '推开大门';
+    return super.verbFor(ch, tile);
+  }
+
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
       case 'shoe_locker':

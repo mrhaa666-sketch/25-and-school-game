@@ -41,7 +41,6 @@ export class Act04Scene extends RoomScene {
   private redEdge?: Phaser.GameObjects.Image;
   /** 讲台上的剪刀（拿走后消失） */
   private scissorsImg?: Phaser.GameObjects.GameObject;
-  private hintDots: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
     super(actKey(4));
@@ -60,7 +59,6 @@ export class Act04Scene extends RoomScene {
     this.trash = undefined;
     this.ropeLine = undefined;
     this.scissorsImg = undefined;
-    this.hintDots = [];
     this.loadRoom('classroom3');
     this.facing = 'right';
     this.syncPlayer();
@@ -79,9 +77,13 @@ export class Act04Scene extends RoomScene {
       // 讲台上放着一把剪刀
       if (!this.hasScissors) {
         const l = this.objectCenter('L');
-        const img = fitImage(this, tex('obj', 'scissors'), { x: l.x - 14, y: l.y - 46, w: 28, h: 22 });
-        this.scissorsImg = img ?? this.add.rectangle(l.x, l.y - 34, 16, 6, 0xb8b8c0);
-        (this.scissorsImg as Phaser.GameObjects.Image).setDepth(102);
+        // 放在讲台台面的右上角，比讲台亮，刀刃上有一道反光，远处也看得见
+        const img = fitImage(this, tex('obj', 'scissors'), { x: l.x + 4, y: l.y - 62, w: 40, h: 30 });
+        this.scissorsImg = img ?? this.add.rectangle(l.x + 22, l.y - 44, 20, 7, 0xd8d8e0);
+        const si = this.scissorsImg as Phaser.GameObjects.Image;
+        si.setDepth(104);
+        si.preFX?.addGlow(0xfff0c8, 3, 0, false, 0.1, 8);
+        this.tweens.add({ targets: si, alpha: { from: 1, to: 0.65 }, duration: 600, yoyo: true, repeat: -1 });
       }
     }
   }
@@ -127,6 +129,25 @@ export class Act04Scene extends RoomScene {
   }
 
   // ------------------------------------------------------------ 调查
+
+  protected keyTargets(): string[] {
+    if (this.room.id === 'classroom3') {
+      if (this.ropeCut) return [];
+      if (!this.descending) return [];
+      return this.hasScissors ? ['W'] : ['L'];
+    }
+    if (this.room.id === 'corridor3_long' && this.chase === 'none') return ['B'];
+    return [];
+  }
+
+  protected verbFor(ch: string, tile: { x: number; y: number }): string {
+    const id = this.room.objects[ch]?.id;
+    if (id === 'lectern' && !this.hasScissors) return '拿剪刀';
+    if (id === 'window' && this.hasScissors && !this.ropeCut) return '剪断绳子';
+    if (id === 'member_scene') return '看着她';
+    if (id === 'burst_door' && this.chase === 'none') return '查看那扇门';
+    return super.verbFor(ch, tile);
+  }
 
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
@@ -199,15 +220,11 @@ export class Act04Scene extends RoomScene {
     this.setHint('W');
   }
 
+  // 改由 keyTargets 的发光来提示
   private setHint(ch: string | null): void {
-    this.hintDots.forEach((d) => d.destroy());
-    this.hintDots = [];
-    if (!ch) return;
-    const c = this.objectCenter(ch);
-    const dot = this.add.circle(c.x, c.y - 12, 4, 0xfff6d0, 0.9).setDepth(131);
-    this.tweens.add({ targets: dot, alpha: 0.15, duration: 700, yoyo: true, repeat: -1 });
-    this.hintDots.push(dot);
+    void ch;
   }
+
 
   protected objective(): string | null {
     if (this.room.id === 'classroom3') {

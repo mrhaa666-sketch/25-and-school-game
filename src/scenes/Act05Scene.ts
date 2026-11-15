@@ -99,6 +99,15 @@ export class Act05Scene extends RoomScene {
     return this.submitted ? '离开考场（下方的门）' : '坐到空着的位子上（中间那张桌子）';
   }
 
+  protected keyTargets(): string[] {
+    return this.submitted ? [] : ['X'];
+  }
+
+  protected verbFor(ch: string, tile: { x: number; y: number }): string {
+    if (this.room.objects[ch]?.id === 'own_desk' && !this.submitted) return '坐下';
+    return super.verbFor(ch, tile);
+  }
+
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
       case 'own_desk':

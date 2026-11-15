@@ -72,6 +72,7 @@ export class StoryScene extends Phaser.Scene {
     kb.addCapture('SPACE');
     kb.on('keydown-SPACE', () => this.next());
     kb.on('keydown-ENTER', () => this.next());
+    kb.on('keydown-F', () => this.next());
 
     this.cameras.main.fadeIn(600, 0, 0, 0);
     Audio.loop('amb', this.data_.amb ?? null, 1500);

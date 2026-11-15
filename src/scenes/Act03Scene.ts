@@ -67,12 +67,11 @@ export class Act03Scene extends RoomScene {
   }
 
   /** 发光的小点：提示可以调查的地方 */
+  // 改由 keyTargets 的发光来提示
   private hintAt(ch: string): void {
-    const c = this.objectCenter(ch);
-    const dot = this.add.circle(c.x, c.y - 10, 4, 0xfff6d0, 0.9).setDepth(131);
-    this.tweens.add({ targets: dot, alpha: 0.15, duration: 700, yoyo: true, repeat: -1 });
-    this.hints.push(dot);
+    void ch;
   }
+
 
   private clearHints(): void {
     this.hints.forEach((h) => h.destroy());
@@ -109,6 +108,20 @@ export class Act03Scene extends RoomScene {
       const t = this.add.text(d.x + 30, d.y - 20, this.textOne('act03.bang'), textStyle(18, '#7a6a6a')).setDepth(130);
       this.tweens.add({ targets: t, alpha: 0, y: t.y - 16, duration: 900, onComplete: () => t.destroy() });
     }
+  }
+
+  protected keyTargets(): string[] {
+    if (this.busy) return [];
+    if (!this.windowSeen) return ['W'];
+    return this.hasRope ? ['W'] : ['r'];
+  }
+
+  protected verbFor(ch: string, tile: { x: number; y: number }): string {
+    const id = this.room.objects[ch]?.id;
+    if (id === 'ropes') return this.hasRope ? '看看绳子' : '扯下一根绳子';
+    if (id === 'window') return this.hasRope ? '把绳子系在窗边' : '看看窗外';
+    if (id === 'door') return '推门';
+    return super.verbFor(ch, tile);
   }
 
   protected onObject(obj: RoomObject): void {

@@ -123,6 +123,19 @@ export class FinalRunScene extends RoomScene {
     return null;
   }
 
+  protected keyTargets(): string[] {
+    if (this.room.id === 'corridor4') return ['S'];
+    if (this.room.id === 'lobby_final') return ['G'];
+    return [];
+  }
+
+  protected verbFor(ch: string, tile: { x: number; y: number }): string {
+    const id = this.room.objects[ch]?.id;
+    if (id === 'stairs') return '下楼';
+    if (id === 'gate') return '推开大门';
+    return super.verbFor(ch, tile);
+  }
+
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
       case 'stairs': // 四楼 → 直接下到一楼，穿过大厅从大门离开

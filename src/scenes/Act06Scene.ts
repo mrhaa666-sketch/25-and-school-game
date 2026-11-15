@@ -114,6 +114,19 @@ export class Act06Scene extends RoomScene {
     return null;
   }
 
+  protected keyTargets(): string[] {
+    if (this.room.id === 'corridor2' && this.transformed) return ['P'];
+    if (this.room.id === 'pink_room2') return ['O'];
+    return [];
+  }
+
+  protected verbFor(ch: string, tile: { x: number; y: number }): string {
+    const id = this.room.objects[ch]?.id;
+    if (id === 'pink_door') return '打开粉色的门';
+    if (id === 'pipe') return '钻进管道';
+    return super.verbFor(ch, tile);
+  }
+
   protected onObject(obj: RoomObject): void {
     const material = this.materialAtSpot(obj.spot);
     if (material) {

@@ -63,6 +63,15 @@ export class Act08Scene extends RoomScene {
     return this.triggered ? null : '去钢琴那边看看';
   }
 
+  protected keyTargets(): string[] {
+    return this.triggered ? [] : ['k'];
+  }
+
+  protected verbFor(ch: string, tile: { x: number; y: number }): string {
+    if (this.room.objects[ch]?.id === 'kanade') return '走近看看';
+    return super.verbFor(ch, tile);
+  }
+
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
       case 'kanade':
