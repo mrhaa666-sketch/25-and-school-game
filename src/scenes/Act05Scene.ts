@@ -94,6 +94,11 @@ export class Act05Scene extends RoomScene {
     super.onInteract();
   }
 
+  protected objective(): string | null {
+    if (this.exam?.isOpen) return null;
+    return this.submitted ? '离开考场（下方的门）' : '坐到空着的位子上（中间那张桌子）';
+  }
+
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
       case 'own_desk':

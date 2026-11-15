@@ -53,6 +53,10 @@ export class Act07Scene extends RoomScene {
     return MOVE.crawlSpeed;
   }
 
+  protected objective(): string | null {
+    return this.forkSaid ? '选一条路' : '往前爬';
+  }
+
   protected onObject(): void {}
 
   /** 管道里很黑：只看得到身边一小圈 */

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Audio } from '../systems/audio';
-import { CHASE, SANITY_COST } from '../core/constants';
+import { CHASE, SANITY_COST, TILE } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { makeMonsterById } from '../systems/figures';
 import { godMode } from './debug';
@@ -16,7 +16,7 @@ import type { RoomObject } from './rooms';
  * 进入尽头的教室并锁上门 → 第三幕。被抓到 → 结局 1。
  */
 export class Act02Scene extends RoomScene {
-  private chase: 'before' | 'running' | 'done' = 'before';
+  private chase: 'before' | 'intro' | 'running' | 'done' = 'before';
   private monster?: Actor;
   private classLockedSaid = false;
   /** 三周目：医务室药柜里的钥匙（打开四楼锁着的教室） */
@@ -252,27 +252,57 @@ export class Act02Scene extends RoomScene {
     this.moveActor(m, this.pos.x, this.pos.y, dt);
   }
 
+  /** 遇到怪物 A：先演一段，再开始追（L 引导：告诉玩家往哪里逃） */
   private startChase(): void {
-    this.chase = 'running';
+    this.chase = 'intro';
     const def = GameState.cycleDef.monsterA;
     const color = Phaser.Display.Color.HexStringToColor(def.color).color;
     const at = this.tileCenter(30, 2);
-    // 怪物穿墙出现在楼梯口；碰撞盒设为 0，沿走廊直线追
-    this.monster = this.addActor(makeMonsterById(this, 0, 0, def.id, color, def.name), at.x, at.y + 12, CHASE.chase1Speed);
+    // 怪物出现在楼梯口；碰撞盒设为 0，沿走廊直线追
+    this.monster = this.addActor(makeMonsterById(this, 0, 0, def.id, color, def.name), at.x, at.y + 12, 0);
     this.heading = Math.PI; // 钢琴一开始朝走廊另一头
-    this.seen = true; // 出现时本来就在视野里：要先移开视线、再看回去，门才会冲过来
-    this.cooldownMs = 0;
     this.monster.obj.setAlpha(0);
-    this.tweens.add({ targets: this.monster.obj, alpha: 1, duration: 200 });
-    this.cameras.main.shake(250, 0.008);
-    this.cameras.main.flash(100, 60, 0, 0);
-    Audio.play('roar');
-    // 停顿一下再冲过来，给玩家反应时间
-    this.locked = false;
-    this.monster.speed = 0;
-    this.time.delayedCall(CHASE.chase1Delay, () => {
-      if (this.monster) this.monster.speed = CHASE.chase1Speed;
+    const name = def.name;
+    void this.cutscene(async () => {
+      this.facing = 'right';
+      this.syncPlayer();
+      Audio.play('sting', { volume: 0.6 });
+      await this.tween({ targets: this.monster!.obj, alpha: 1, duration: 1400 });
+      await this.say(this.t('monster_appear').map((l) => l.replace('{monster}', name)));
+      this.cameras.main.shake(300, 0.01);
+      this.cameras.main.flash(100, 60, 0, 0);
+      Audio.play('roar');
+      await this.wait(300);
+      // 最左边那间教室的门开了：画成半开的门，告诉玩家往哪里逃
+      const t = this.findTile('2');
+      if (t) {
+        const c = this.tileCenter(t.x, t.y);
+        this.drawDoor({ id: 'class_door', color: 0, tex: 'class_door' }, c.x, c.y + TILE / 2, undefined, 0, true);
+      }
+      Audio.play('door_open', { volume: 0.5 });
+      await this.say(this.t('door_opened'));
+      this.facing = 'left';
+      this.syncPlayer();
     });
+    // 演出结束后才开始追；再停顿一下给玩家反应时间
+    const begin = () => {
+      if (this.locked) return void this.time.delayedCall(100, begin);
+      this.chase = 'running';
+      this.seen = true; // 出现时本来就在视野里：要先移开视线、再看回去，门才会冲过来
+      this.cooldownMs = 0;
+      this.time.delayedCall(CHASE.chase1Delay, () => {
+        if (this.monster) this.monster.speed = CHASE.chase1Speed;
+      });
+    };
+    this.time.delayedCall(100, begin);
+  }
+
+  protected objective(): string | null {
+    if (this.chase === 'running') return '逃进走廊最左边那间开了门的教室！';
+    if (this.chase !== 'before') return null;
+    if (this.room.id === 'infirmary') return '离开医务室（下方的门）';
+    if (this.room.id === 'corridor4') return this.classLockedSaid ? '教室进不去。沿着走廊走到尽头看看' : '沿着走廊看看';
+    return '回到走廊';
   }
 
   private caught(): void {

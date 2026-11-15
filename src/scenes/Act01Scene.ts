@@ -7,13 +7,14 @@ import { officialFrames, poseImage } from '../systems/sprites';
 
 /** 小学生版真冬的身高（真冬是 PLAYER_HEIGHT） */
 const CHILD_HEIGHT = 52;
+import { TILE } from '../core/constants';
 import { actKey, startAct } from './flow';
 import { RoomScene } from './RoomScene';
 
 /**
- * 第一幕 · 废弃学校（仅一周目，不可操作）。
- * 四人深夜来到门口 → 走廊尽头站着一个背对着的小女孩，只有真冬看得见
- * → 真冬走过去 → 小女孩的头转过来 → 黑屏。
+ * 第一幕 · 校门外（仅一周目，不可操作）。
+ * 四人深夜来到废弃学校的校门外 → 校门里面站着一个背对着的小女孩，只有真冬看得见
+ * → 真冬走到校门前 → 小女孩的头转过来 → 一阵眩晕，真冬晕倒 → 在学校的医务室醒来（第二幕）。
  */
 export class Act01Scene extends RoomScene {
   constructor() {
@@ -38,6 +39,39 @@ export class Act01Scene extends RoomScene {
     void this.play();
   }
 
+  /** 眩晕：边说话边加重，最后几乎看不清 */
+  private async dizzy(): Promise<void> {
+    const cam = this.cameras.main;
+    const fx = cam.postFX;
+    const blur = fx?.addBlur(1, 0, 0, 0);
+    const vig = fx?.addVignette(0.5, 0.5, 0.95, 0.2);
+    const color = fx?.addColorMatrix();
+    Audio.loop('dizzy', 'heartbeat', 600); // 不用 heart 频道：界面每帧会按精神值重设它
+    const base = cam.zoom;
+    const state = { k: 0 };
+    // k 从 0 慢慢到 1：晃动幅度、模糊、暗角、拉近都跟着 k 走
+    const t0 = this.time.now;
+    const tick = () => {
+      const k = state.k;
+      const t = (this.time.now - t0) / 1000;
+      cam.setRotation(Math.sin(t * 1.7) * 0.05 * k);
+      cam.setZoom(base * (1 + 0.12 * k + Math.sin(t * 2.3) * 0.02 * k));
+      if (blur) blur.strength = 2.5 * k;
+      if (vig) vig.radius = 0.95 - 0.55 * k;
+      if (color) {
+        color.reset();
+        color.saturate(-0.6 * k).brightness(1 - 0.35 * k, true);
+      }
+    };
+    this.events.on(Phaser.Scenes.Events.UPDATE, tick);
+    this.tweens.add({ targets: state, k: 0.6, duration: 2200, ease: 'Sine.easeIn' });
+    await this.say(this.text('act01.dizzy'));
+    await this.tween({ targets: state, k: 1, duration: 1200, ease: 'Sine.easeIn' });
+    await this.wait(400);
+    this.events.off(Phaser.Scenes.Events.UPDATE, tick);
+    Audio.loop('dizzy', null, 2000);
+  }
+
   private async play(): Promise<void> {
     const cam = this.cameras.main;
     cam.fadeIn(1500, 0, 0, 0);
@@ -60,8 +94,9 @@ export class Act01Scene extends RoomScene {
     this.facing = 'right';
     this.syncPlayer();
 
-    // 走廊尽头的小女孩：小学制服，发型和真冬小时候一样（不点破）
-    const end = this.tileCenter(29, 3);
+    // 校门里面的小女孩：小学制服，发型和真冬小时候一样（不点破）
+    const g = this.tileCenter(11, 1);
+    const end = { x: g.x + TILE / 2, y: g.y };
     const girl = this.add.container(end.x, end.y + 8);
     const girlImg = poseImage(this, 'mafuyu_child_back', CHILD_HEIGHT);
     girl.add(girlImg ?? makeFigure(this, 0, 0, { ...PALETTE.mafuyuChild, pose: 'away', scale: 0.75 }));
@@ -73,7 +108,9 @@ export class Act01Scene extends RoomScene {
     await this.say(this.text('act01.girl'));
     await this.say(this.text('act01.what'));
     await this.say(this.text('act01.walk'));
-    await this.walkPlayerTo(end.x - 70, this.pos.y, 125);
+    await this.walkPlayerTo(end.x - 60, end.y + 90, 110);
+    this.facing = 'up';
+    this.syncPlayer();
     await this.wait(900);
 
     // 头旋转 180 度：脸转过来，嘴角流下黑色液体
@@ -89,13 +126,15 @@ export class Act01Scene extends RoomScene {
       head.setFillStyle(0xd9cfe8);
       await this.tween({ targets: head, scaleX: 1, duration: 450, ease: 'Sine.easeOut' });
     }
-    await this.wait(1800);
+    await this.wait(1200);
 
-    // 黑屏，真冬晕倒
-    cam.flash(80, 0, 0, 0);
+    // 一阵眩晕：画面晃、慢慢拉近、越来越模糊、四周变暗，心跳声越来越响
+    await this.dizzy();
+    // 真冬倒下，黑屏
     this.setPlayerPose('mafuyu_fallen', () => makeFigure(this, 0, 0, { ...PALETTE.mafuyu, pose: 'lie' }));
-    cam.fadeOut(1400, 0, 0, 0);
-    await this.wait(2600);
+    Audio.play('fall_crash', { volume: 0.35, rate: 0.8 });
+    cam.fadeOut(1600, 0, 0, 0);
+    await this.wait(2800);
     if (GameState.save.act === 1) startAct(this, 2);
   }
 }

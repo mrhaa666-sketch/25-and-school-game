@@ -16,6 +16,9 @@ import type { RoomObject } from './rooms';
  */
 export class Act03Scene extends RoomScene {
   private hasRope = false;
+  /** 走到窗边看过下面（引导：之后才提示用绳子） */
+  private windowSeen = false;
+  private hints: Phaser.GameObjects.GameObject[] = [];
   private busy = false;
   private bangTimer = 0;
 
@@ -30,6 +33,8 @@ export class Act03Scene extends RoomScene {
   create(): void {
     super.create();
     this.hasRope = false;
+    this.windowSeen = false;
+    this.hints = [];
     this.busy = false;
     this.bangTimer = 2500;
     this.loadRoom('classroom4');
@@ -37,7 +42,7 @@ export class Act03Scene extends RoomScene {
     this.syncPlayer();
     this.drawRopes();
     this.cameras.main.fadeIn(800, 0, 0, 0);
-    void this.cutscene(() => this.say(this.t('enter')));
+    void this.cutscene(() => this.say(this.t('enter'))).then(() => this.hintAt('W'));
   }
 
   /** 天花板上垂下来的绳子（装饰） */
@@ -54,7 +59,45 @@ export class Act03Scene extends RoomScene {
     this.roomLayer.add(g);
   }
 
+  protected objective(): string | null {
+    if (this.busy) return null;
+    if (!this.windowSeen) return '找办法离开教室（去右边的窗户看看）';
+    if (!this.hasRope) return '扯下一根天花板上挂着的绳子';
+    return '把绳子系在右边的窗户上';
+  }
+
+  /** 发光的小点：提示可以调查的地方 */
+  private hintAt(ch: string): void {
+    const c = this.objectCenter(ch);
+    const dot = this.add.circle(c.x, c.y - 10, 4, 0xfff6d0, 0.9).setDepth(131);
+    this.tweens.add({ targets: dot, alpha: 0.15, duration: 700, yoyo: true, repeat: -1 });
+    this.hints.push(dot);
+  }
+
+  private clearHints(): void {
+    this.hints.forEach((h) => h.destroy());
+    this.hints = [];
+  }
+
+  /** 走到窗边：看到下面是三楼，想到用绳子 */
+  private async seeWindow(): Promise<void> {
+    this.windowSeen = true;
+    await this.cutscene(async () => {
+      this.facing = 'right';
+      this.syncPlayer();
+      await this.say(this.t('window_found'));
+    });
+    this.clearHints();
+    if (!this.hasRope) this.hintAt('r');
+    else this.hintAt('W');
+  }
+
   protected onUpdate(_time: number, delta: number): void {
+    // 走到窗边附近：触发「用绳子荡下去」的剧情
+    if (!this.windowSeen && !this.locked && !this.busy) {
+      const w = this.objectCenter('W');
+      if (Phaser.Math.Distance.Between(w.x, w.y, this.pos.x, this.pos.y) < 120) void this.seeWindow();
+    }
     // 怪物在撞门
     if (this.busy) return;
     this.bangTimer -= delta;
@@ -79,9 +122,13 @@ export class Act03Scene extends RoomScene {
       case 'ropes':
         if (this.hasRope) return this.ui.say(this.t('ropes_again'));
         this.hasRope = true;
+        this.clearHints();
+        this.hintAt('W');
         return this.ui.say(this.t('ropes'));
       case 'window':
+        if (!this.windowSeen) return void this.seeWindow();
         if (!this.hasRope) return this.ui.say(this.t('window_no_rope'));
+        this.clearHints();
         void this.tieAndClimb();
         return;
       case 'lectern':
@@ -124,7 +171,10 @@ export class Act03Scene extends RoomScene {
         triggerEnding(this, 3);
         return;
       }
-      await this.say(this.t('climb_ok'));
+      // 先换到三楼再说「荡进了三楼的窗户」（第四幕开头会说）
+      this.cameras.main.fadeOut(300, 0, 0, 0);
+      await this.wait(350);
+      this.registry.set('fromRope', true);
       startAct(this, 4);
     });
   }

@@ -39,6 +39,9 @@ export class Act04Scene extends RoomScene {
   private nearAcc = 0;
   private examDoorX: number | null = null;
   private redEdge?: Phaser.GameObjects.Image;
+  /** 讲台上的剪刀（拿走后消失） */
+  private scissorsImg?: Phaser.GameObjects.GameObject;
+  private hintDots: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
     super(actKey(4));
@@ -56,6 +59,8 @@ export class Act04Scene extends RoomScene {
     this.cuts = [];
     this.trash = undefined;
     this.ropeLine = undefined;
+    this.scissorsImg = undefined;
+    this.hintDots = [];
     this.loadRoom('classroom3');
     this.facing = 'right';
     this.syncPlayer();
@@ -71,18 +76,33 @@ export class Act04Scene extends RoomScene {
     if (roomId === 'classroom3') {
       const p = this.memberPos();
       this.addRoomSorted(drawMemberScene(this, GameState.cycleDef.scenes.floor3, p.x, p.y + 14));
+      // 讲台上放着一把剪刀
+      if (!this.hasScissors) {
+        const l = this.objectCenter('L');
+        const img = fitImage(this, tex('obj', 'scissors'), { x: l.x - 14, y: l.y - 46, w: 28, h: 22 });
+        this.scissorsImg = img ?? this.add.rectangle(l.x, l.y - 34, 16, 6, 0xb8b8c0);
+        (this.scissorsImg as Phaser.GameObjects.Image).setDepth(102);
+      }
     }
   }
 
   private async intro(): Promise<void> {
     await this.cutscene(async () => {
       await this.wait(500);
+      // 从四楼荡下来：在三楼的画面里说
+      if (this.registry.get('fromRope')) {
+        this.registry.set('fromRope', false);
+        this.cameras.main.shake(300, 0.008);
+        Audio.play('fall_crash', { volume: 0.5 });
+        await this.say(this.text('act03.climb_ok'));
+      }
       await this.say(this.t('enter'));
       // 看到成员场景，站着不动
       this.facing = 'right';
       this.syncPlayer();
       const id = GameState.cycleDef.scenes.floor3;
-      const close = hasMemberOverlay(this, id) ? showMemberOverlay(this, id) : null;
+      // 有绘名的 CG 时由 CG 来演（台词 act04.member 登记了 CG），不再叠只有鞋的那张小图
+      const close = hasMemberOverlay(this, id) && !this.textures.exists(tex('cg', 'cg_act04_ena')) ? showMemberOverlay(this, id) : null;
       await this.wait(2200);
       await this.say(this.t('member'));
       await close?.();
@@ -92,6 +112,7 @@ export class Act04Scene extends RoomScene {
       this.startDescent();
       await this.say(this.t('roar'));
     });
+    this.setHint('L');
   }
 
   /** 窗外：真冬自己那根绳子，和顺着它往下爬的怪物 */
@@ -118,7 +139,8 @@ export class Act04Scene extends RoomScene {
       case 'lectern':
         if (!this.hasScissors) {
           this.hasScissors = true;
-          return this.ui.say(this.t('lectern_scissors'));
+          void this.takeScissors();
+          return;
         }
         return this.ui.say(this.t('lectern'));
       case 'window':
@@ -153,7 +175,52 @@ export class Act04Scene extends RoomScene {
         return this.ui.say(this.t('blackboard'));
       case 'class_door':
         return this.ui.say(this.t('class_door'));
+      case 'burst_door':
+        if (this.room.id === 'corridor3_long' && this.chase === 'none') void this.chaseIntro();
+        return;
     }
+  }
+
+  /** 拿到剪刀：窗外的怪物又往下爬了一截，提示去剪绳子 */
+  private async takeScissors(): Promise<void> {
+    await this.cutscene(async () => {
+      this.scissorsImg?.destroy();
+      this.scissorsImg = undefined;
+      await this.say(this.t('lectern_scissors'));
+      this.cameras.main.shake(300, 0.008);
+      Audio.play('roar', { volume: 0.6, rate: 0.9 });
+      if (this.descending) {
+        this.descentTween?.stop();
+        const w = this.objectCenter('W');
+        await this.tween({ targets: this.descending, y: w.y - 24, duration: 900, ease: 'Sine.easeIn' });
+      }
+      await this.say(this.t('scissors_taken'));
+    });
+    this.setHint('W');
+  }
+
+  private setHint(ch: string | null): void {
+    this.hintDots.forEach((d) => d.destroy());
+    this.hintDots = [];
+    if (!ch) return;
+    const c = this.objectCenter(ch);
+    const dot = this.add.circle(c.x, c.y - 12, 4, 0xfff6d0, 0.9).setDepth(131);
+    this.tweens.add({ targets: dot, alpha: 0.15, duration: 700, yoyo: true, repeat: -1 });
+    this.hintDots.push(dot);
+  }
+
+  protected objective(): string | null {
+    if (this.room.id === 'classroom3') {
+      if (!this.descending && !this.ropeCut) return null;
+      if (!this.hasScissors) return '找能剪断绳子的东西（讲台上）';
+      if (!this.ropeCut) return '去左边的窗户，剪断绳子';
+      return '离开教室（下方的门）';
+    }
+    if (this.room.id === 'corridor3_long') {
+      if (this.chase === 'none') return '看看对面那扇在响的门';
+      if (this.chase === 'running') return this.examDoorX !== null ? '跑进前面出现的那扇门！' : '往右跑！别被追上';
+    }
+    return null;
   }
 
   private async cutRope(): Promise<void> {
@@ -180,6 +247,7 @@ export class Act04Scene extends RoomScene {
       await this.say(this.t('fall'));
       await this.say(this.t('after_cut'));
     });
+    this.setHint(null);
   }
 
   /** 二~四周目：剪断时，画布上的颜料往下流 */
@@ -209,7 +277,7 @@ export class Act04Scene extends RoomScene {
         return true;
       }
       this.loadRoom('corridor3_long', '1');
-      void this.chaseIntro();
+      void this.corridorEnter();
       return true;
     }
     if (this.room.id === 'corridor3_long') {
@@ -243,17 +311,31 @@ export class Act04Scene extends RoomScene {
       } else this.lingerMs = 0;
       return;
     }
+    // 没去看那扇门、直接往前走：走出一段后门也会被撞开
+    if (this.room.id === 'corridor3_long' && this.chase === 'none' && !this.locked && this.playerTile().x >= 16) void this.chaseIntro();
     if (this.chase === 'running') this.updateChase(delta);
   }
 
-  private async chaseIntro(): Promise<void> {
-    this.chase = 'intro';
-    this.ensureRedEdge();
+  /** 进走廊：对面的门在响，等真冬去查看那扇门，怪物群才涌出来 */
+  private async corridorEnter(): Promise<void> {
     await this.cutscene(async () => {
       this.facing = 'down';
       this.syncPlayer();
       await this.wait(400);
+      Audio.play('door_bang', { volume: 0.6 });
       await this.say(this.t('corridor_bang'));
+    });
+    this.setHint('B');
+  }
+
+  private async chaseIntro(): Promise<void> {
+    this.chase = 'intro';
+    this.setHint(null);
+    this.ensureRedEdge();
+    await this.cutscene(async () => {
+      this.facing = 'down';
+      this.syncPlayer();
+      await this.say(this.t('door_check'));
       for (let i = 0; i < 3; i++) {
         this.cameras.main.shake(160, 0.008);
         Audio.play('door_bang', { rate: 1 + i * 0.05 });
@@ -266,6 +348,8 @@ export class Act04Scene extends RoomScene {
       Audio.play('door_burst');
       this.spawnSwarm(d.x, d.y - 30);
       await this.wait(350);
+      const name = GameState.cycleDef.monsterB.name;
+      await this.say(this.t('burst').map((l) => l.replace('{monster}', name)));
     });
     this.facing = 'right';
     this.syncPlayer();

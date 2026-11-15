@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { makeFigure, PALETTE } from '../systems/figures';
-import { fitImage, tex } from '../systems/sprites';
+import { fitImage, officialFrames, poseImage, tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
 
 /**
@@ -46,6 +46,19 @@ export function showMemberOverlay(scene: Phaser.Scene, id: string): () => Promis
 
 export function drawMemberScene(scene: Phaser.Scene, id: string, x: number, y: number, size = 120): Phaser.GameObjects.Container {
   const c = scene.add.container(x, y).setDepth(95);
+  if (id === 'hanged_ena') {
+    // 绘名吊在绳子下面：用她的小人，压暗，轻轻晃；不画任何伤口
+    const frames = officialFrames('ena', 'blink');
+    const body = poseImage(scene, frames[0], 66, frames);
+    const sway = scene.add.container(0, -150);
+    sway.add(scene.add.line(0, 0, 0, 0, 0, 92, 0x8a7e66).setOrigin(0).setLineWidth(2));
+    if (body) sway.add(body.setPosition(0, 150 - 20).setTint(0x6a6a78));
+    else sway.add(makeFigure(scene, 0, 150 - 20, { ...PALETTE.ena, pose: 'hang', label: '绘名' }));
+    c.add(sway);
+    c.add(scene.add.ellipse(0, -2, 26, 7, 0x000000, 0.35)); // 地上的影子
+    scene.tweens.add({ targets: sway, angle: { from: -2.5, to: 2.5 }, duration: 2800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    return c;
+  }
   if (hasMemberOverlay(scene, id) && scene.textures.exists(tex('obj', 'ropes'))) {
     // 房间里只有一根空着的绳圈（从绳子素材里裁出一根）
     const ROPE = { x: 233, y: 36, w: 58, h: 440 };

@@ -107,6 +107,13 @@ export class Act06Scene extends RoomScene {
     });
   }
 
+  protected objective(): string | null {
+    if (this.room.id === 'stairs2') return '出楼梯间（右边的门），去二楼走廊';
+    if (this.room.id === 'corridor2') return this.transformed ? '打开走廊尽头那扇粉色的门' : '沿着走廊走到另一头';
+    if (this.room.id === 'pink_room2') return '找别的出口';
+    return null;
+  }
+
   protected onObject(obj: RoomObject): void {
     const material = this.materialAtSpot(obj.spot);
     if (material) {

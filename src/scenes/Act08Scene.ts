@@ -59,6 +59,10 @@ export class Act08Scene extends RoomScene {
     this.addRoomSorted(this.member);
   }
 
+  protected objective(): string | null {
+    return this.triggered ? null : '去钢琴那边看看';
+  }
+
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
       case 'kanade':

@@ -116,6 +116,13 @@ export class FinalRunScene extends RoomScene {
     });
   }
 
+  protected objective(): string | null {
+    if (this.room.id === 'infirmary') return '离开医务室';
+    if (this.room.id === 'corridor4') return '去走廊尽头的楼梯，下楼';
+    if (this.room.id === 'lobby_final') return '推开下方的大门';
+    return null;
+  }
+
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
       case 'stairs': // 四楼 → 直接下到一楼，穿过大厅从大门离开

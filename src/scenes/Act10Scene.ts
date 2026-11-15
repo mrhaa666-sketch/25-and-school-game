@@ -23,6 +23,10 @@ export class Act10Scene extends RoomScene {
     return true;
   }
 
+  protected objective(): string | null {
+    return '从下方的大门离开学校';
+  }
+
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
       case 'shoe_locker':
