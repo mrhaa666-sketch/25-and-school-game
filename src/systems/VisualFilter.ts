@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { GameState } from '../core/GameState';
 import { EdgeBlurPipeline } from './EdgeBlurPipeline';
+import { settings } from '../core/settings';
 import { sanityTier, type SanityTier } from '../core/progress';
 
 /**
@@ -70,6 +71,7 @@ export class VisualFilter {
   }
 
   private flick(tier: SanityTier): void {
+    if (settings.calm) return; // 设置：减弱闪光
     const strength = 0.35 + tier * 0.1;
     this.scene.tweens.chain({
       targets: this.flicker,
@@ -143,7 +145,7 @@ export function createCameraFx(camera: Phaser.Cameras.Scene2D.Camera): (time: nu
         if (t === 4) matrix.saturate(-0.75, true).brightness(0.8, true);
       }
     }
-    if (t === 4 && time >= nextShake) {
+    if (t === 4 && time >= nextShake && !settings.calm) {
       nextShake = time + Phaser.Math.Between(1500, 3500);
       camera.shake(Phaser.Math.Between(150, 400), 0.003);
     }

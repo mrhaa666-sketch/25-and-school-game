@@ -16,6 +16,22 @@ import { FinalRunScene } from './scenes/FinalRunScene';
 import { StoryScene } from './scenes/StoryScene';
 import { TitleScene } from './scenes/TitleScene';
 import { UIScene } from './scenes/UIScene';
+import { settings } from './core/settings';
+
+// 设置里打开「减弱闪光和晃屏」时：所有镜头的晃动幅度和闪光亮度都降下来
+{
+  const proto = Phaser.Cameras.Scene2D.Camera.prototype as unknown as Record<string, (...a: unknown[]) => unknown>;
+  const shake = proto.shake;
+  const flash = proto.flash;
+  proto.shake = function (this: unknown, duration: number, intensity?: number, ...rest: unknown[]) {
+    const k = settings.calm ? 0.25 : 1;
+    return shake.call(this, settings.calm ? (duration as number) * 0.6 : duration, typeof intensity === 'number' ? intensity * k : intensity, ...rest);
+  } as (...a: unknown[]) => unknown;
+  proto.flash = function (this: unknown, duration: number, r?: number, g?: number, b?: number, ...rest: unknown[]) {
+    if (!settings.calm) return flash.call(this, duration, r, g, b, ...rest);
+    return flash.call(this, duration, Math.round((r ?? 255) * 0.3), Math.round((g ?? 255) * 0.3), Math.round((b ?? 255) * 0.3), ...rest);
+  } as (...a: unknown[]) => unknown;
+}
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,

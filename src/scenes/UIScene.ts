@@ -3,6 +3,7 @@ import { EV, GameState } from '../core/GameState';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { getMaterial } from '../core/progress';
 import { Audio } from '../systems/audio';
+import { saveSettings, settings } from '../core/settings';
 import { cycleCountLabel, tUi } from '../core/text';
 import { tex } from '../systems/sprites';
 import { textStyle } from '../systems/style';
@@ -80,6 +81,20 @@ export class UIScene extends Phaser.Scene {
     this.pause = new ListMenu(this, tUi('pauseTitle'), [
       { label: tUi('resume'), action: () => this.closeModal() },
       { label: () => (Audio.muted ? tUi('soundOff') : tUi('soundOn')), action: () => Audio.toggleMute() },
+      {
+        label: () => `亮度：${['正常', '亮一些', '更亮'][settings.brightness]}`,
+        action: () => {
+          settings.brightness = ((settings.brightness + 1) % 3) as 0 | 1 | 2;
+          saveSettings();
+        },
+      },
+      {
+        label: () => `减弱闪光和晃屏：${settings.calm ? '开' : '关'}`,
+        action: () => {
+          settings.calm = !settings.calm;
+          saveSettings();
+        },
+      },
       {
         label: tUi('toTitle'),
         action: () => {

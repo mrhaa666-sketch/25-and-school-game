@@ -144,7 +144,7 @@ const CORRIDOR_STUFF: Record<string, RoomObject> = {
 /** 教室门牌：挂在后墙上每扇门的右上方 */
 const classSigns = (cols: number[]): RoomDecor[] => cols.map((c) => ({ tex: 'class_sign', x: c + 1.55, y: -0.95, scale: 0.7, wall: true, cycle: [1, 2, 3, 4, 'final'] }));
 
-const DESK = { id: 'desk', color: 0x4a4038, label: '桌', tex: 'school_desk' };
+const DESK = { id: 'desk', color: 0x4a4038, label: '课桌', tex: 'school_desk' };
 const CLASS_DOOR = { id: 'class_door', color: 0x2c2620, label: '门', tex: 'class_door', wall: true };
 
 /** 日光灯的状态，按顺序轮着来，常亮的多一些 */

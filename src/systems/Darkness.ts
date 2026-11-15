@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../core/constants';
 import { sanityTier, type SanityTier } from '../core/progress';
 import { GameState } from '../core/GameState';
+import { settings } from '../core/settings';
 
 /**
  * 黑暗层：一张盖住视野的黑色渲染纹理，在上面「擦」出光的区域。
@@ -150,7 +151,7 @@ export class Darkness {
     const h = Math.ceil(view.height + pad * 2);
     const beat = Phaser.Math.Clamp(this.beat, 0, 1);
     const sig = [
-      ox, oy, w, h, tier, beat.toFixed(2), this.beatMode,
+      ox, oy, w, h, tier, beat.toFixed(2), this.beatMode, settings.brightness,
       player ? `${Math.round(player.x)},${Math.round(player.y)}` : '-',
       ...lights.map((l) => `${Math.round(l.x)},${Math.round(l.y)},${l.radius},${l.intensity.toFixed(2)}`),
     ].join('|');
@@ -161,7 +162,8 @@ export class Darkness {
     this.rt.setPosition(ox, oy);
     this.rt.clear();
     const lampsMode = this.beatMode === 'lamps';
-    const dark = lampsMode ? Math.max(pl.dark, 0.95) : pl.dark + (1 - pl.dark) * beat * 0.6;
+    const bright = [1, 0.8, 0.62][settings.brightness];
+    const dark = (lampsMode ? Math.max(pl.dark, 0.95) : pl.dark + (1 - pl.dark) * beat * 0.6) * bright;
     this.rt.fill(0x000000, dark);
     const lightK = lampsMode ? 1 : 1 - beat * 0.7;
 
@@ -173,7 +175,7 @@ export class Darkness {
     if (player) {
       // 玩家光的大小按屏幕像素定，镜头放大时换算回世界尺寸，保证看到的范围一致
       // 奏周目的走廊：拍子之间几乎全黑，只剩身边一小圈
-      const r = (pl.outer * (lampsMode ? 0.5 : 1)) / zoom;
+      const r = (pl.outer * (lampsMode ? 0.5 : 1) * [1, 1.2, 1.4][settings.brightness]) / zoom;
       erase(playerBrush(this.scene, tier), player.x, player.y - 30, r, r, lightK);
     }
     for (const l of lights) {
