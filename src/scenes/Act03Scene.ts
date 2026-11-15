@@ -125,6 +125,10 @@ export class Act03Scene extends RoomScene {
     return super.verbFor(ch, tile);
   }
 
+  protected heldItems(): string[] {
+    return this.hasRope ? ['绳子'] : [];
+  }
+
   protected onObject(obj: RoomObject): void {
     if (this.busy) return;
     const material = this.materialAtSpot(obj.spot);

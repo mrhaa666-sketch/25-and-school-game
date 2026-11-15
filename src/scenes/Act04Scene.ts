@@ -177,6 +177,10 @@ export class Act04Scene extends RoomScene {
     return super.verbFor(ch, tile);
   }
 
+  protected heldItems(): string[] {
+    return this.hasScissors && !this.ropeCut ? ['剪刀'] : [];
+  }
+
   protected onObject(obj: RoomObject): void {
     switch (obj.id) {
       case 'locker3': {

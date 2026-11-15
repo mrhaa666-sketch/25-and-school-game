@@ -1839,6 +1839,7 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     if (this.objectiveAcc <= 0) {
       this.objectiveAcc = 250;
       this.ui.setObjective(this.locked && !this.isChasing() ? null : this.objective());
+      this.ui.setHeld(this.heldItems());
     }
     this.stamina = Phaser.Math.Clamp(this.stamina + (running ? -MOVE.staminaDrain : MOVE.staminaRegen) * dt, 0, MOVE.staminaMax);
     this.drawStamina();
@@ -1850,6 +1851,11 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
   }
 
   // ------------------------------------------------------------ 引导：当前目标、调查提示、鼠标
+
+  /** 手上拿着的关键物品（显示在目标栏下面）。子类覆盖 */
+  protected heldItems(): string[] {
+    return [];
+  }
 
   /** 现在要做的事（左上角）。子类按剧情进度返回一句话；null 不显示 */
   protected objective(): string | null {

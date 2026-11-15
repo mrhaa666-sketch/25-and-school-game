@@ -74,6 +74,7 @@ export class UIScene extends Phaser.Scene {
     this.cycleLabel = this.add.text(GAME_WIDTH - 28, 22, '', textStyle(16, '#6a6660')).setOrigin(1, 0).setDepth(800);
     this.dialogueBox = new DialogueBox(this);
     this.objectiveText = undefined; // 场景重启后旧的文字对象已经销毁了
+    this.heldText = undefined;
     this.phone = new PhoneUI(this);
     this.bag = new InventoryUI(this);
     this.pause = new ListMenu(this, tUi('pauseTitle'), [
@@ -164,6 +165,16 @@ export class UIScene extends Phaser.Scene {
     t.setText(`目标　${text}`).setAlpha(0);
     // 目标换了：闪两下，让玩家注意到
     this.tweens.chain({ targets: t, tweens: [{ alpha: 1, duration: 300 }, { alpha: 0.4, duration: 250 }, { alpha: 1, duration: 250 }, { alpha: 0.4, duration: 250 }, { alpha: 1, duration: 300 }] });
+  }
+
+  private heldText?: Phaser.GameObjects.Text;
+
+  /** 目标栏下面：手上拿着的关键物品（绳子、剪刀）。空数组隐藏 */
+  setHeld(items: string[]): void {
+    if (!this.heldText || !this.heldText.active) {
+      this.heldText = this.add.text(26, 98, '', textStyle(15, '#c8c0b0')).setDepth(800);
+    }
+    this.heldText.setText(items.length ? `手上：${items.join('、')}` : '');
   }
 
   /** 是否有界面挡住玩家操作 */
