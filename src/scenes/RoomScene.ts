@@ -1400,7 +1400,12 @@ export abstract class RoomScene extends Phaser.Scene implements PlayTarget {
     this.setupMirror(def);
     this.addMaterialHints();
     this.addDoorLights();
-    this.roomLights = [...this.buildRoomLights(def, isBack), ...this.leakLights];
+    // 每个出口都留一点微光：在最暗的时候也看得出门在哪
+    const exitGlow = exitCells.map((e) => {
+      const c = this.tileCenter(e.x, e.y);
+      return { x: c.x, y: e.back ? c.y + TILE * 0.7 : c.y, radius: TILE * 0.9, intensity: 0.32, squash: 0.7 };
+    });
+    this.roomLights = [...this.buildRoomLights(def, isBack), ...this.leakLights, ...exitGlow];
     if (GameState.isFinal) this.addDawnLight();
 
     this.frameRoom(worldW, totalH, this.originY - extra);
